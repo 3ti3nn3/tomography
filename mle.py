@@ -2,7 +2,7 @@ import numpy as np
 import const
 
 
-def iterative_one(rho, R_arr):
+def iterative_one(rho: np.array, R_arr: np.array):
     '''
     Performs one step of iterative MLE according to given measurement.
 
@@ -17,22 +17,17 @@ def iterative_one(rho, R_arr):
     return update/np.trace(update)
 
 
-def iterative(D: list, iter: int):
+def iterative(D: np.array, iter: int):
     '''
     Performs iterative MLE.
 
-    :param D   : measured data set, datayep: [axis, eigenvalue] array of array
+    :param D   : measured data set, datatype: list of [axis, measured eigenvalue]
     :param iter: number of iterations
     :return: iterative MLE estimator
     '''
     I     = len(D)
     rho   = np.eye(2)/2
-    R_arr = np.empty((I, 2, 2), dtype=complex)
-
-    # calculate the eigenstate matrices
-    for i in range(I):
-        estate   = const.estate[tuple(D[i])]
-        R_arr[i] = np.tensordot(estate, np.conjugate(estate), axes=0)
+    R_arr = np.array([const.edensity[tuple(d)] for d in D])
 
     # perform updates
     for i in range(iter):
