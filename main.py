@@ -81,21 +81,39 @@ def main(argv = None):
 
     # 4: linear inversion
     # M = np.array([const.se, const.sx, const.sy, const.sz])
-    # n = np.array([np.ones(10), np.ones(10), np.ones(10), np.ones(10)])
-    # print(inversion.linear(M, n))
+    # D = np.array([np.concatenate((np.ones(10)*0, np.ones(10)*1, np.ones(10)*2, np.ones(10)*3)), np.ones(40)]).T
+    # n = inversion.count(D, np.zeros((4, 2)))
+    #
+    # print(inversion.linear(n, M))
 
     # 5: maximum likelihood estimate
-    # d1 = (1, 1)
-    # d2 = (2, 1)
-    # d3 = (1, 1)
-    # D1 = [d1, d2, d3]
-    # print(mle.iterative(D1, 1000))
+    # d1 = [1, 0]
+    # d2 = [2, 0]
+    # d3 = [1, 0]
+    # a1 = [1, 1]
+    # a2 = [2, 1]
+    # a3 = [1, 1]
+    # D  = np.array([d1, d2, d3])
+    # # D  = np.array([d1, d2, d3, a1, a2, a3])
+    # print(mle.iterative(D, 1000))
 
     # 6: simualte quantum measurement
+    N     = 1000000
+
     rho_0 = pure.unitary_to_density(2, 1)
-    axes  = np.concatenate((np.ones(10), 2*np.ones(10), 3*np.ones(10)))
-    M, D  = simulate.measure(rho_0, ax)
-    rho_1 = simulate.recons(D, method='likelihood', iter=100)
+    print(rho_0)
+
+    axes  = np.random.randint(0, high=4, size=N)
+    D     = simulate.measure(rho_0, axes)
+    print('Measurement simulation finished.')
+
+    rho_1 = simulate.recons(D, M=const.spovm, iter=1000)
+    print(rho_1)
+    print(general.hilbert_schmidt_distance(rho_0, rho_1))
+
+    rho_2 = simulate.recons(D, M=const.spovm, method='inversion')
+    print(rho_2)
+    print(general.hilbert_schmidt_distance(rho_0, rho_2))
 
 
 if __name__ == '__main__':
