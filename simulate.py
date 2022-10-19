@@ -5,82 +5,48 @@ import inversion
 import const
 
 
-def measure_row(rho: np.array, ax: int, N: int):
+def measure(rho: np.array, axes: np.array):
     '''
-    Simulates a quantum measurement for the same axis in a row.
-
-    :param rho: sample state
-    :param ax : measurement axis
-        1: x-axis
-        2: y-axis
-        3: z-axis
-    :param N  : number of samples provided
-    :return: list of POVM's, list of tuples (axis, measurement result)
-    '''
-    p = np.trace(np.array([rho@const.edensity[(ax, 0)], rho@const.edensity[(ax, 1)]]), axis1=-2, axis=-1)
-    M = np.repeat([const.spovm[ax]], N, axis=0)
-
-    return M, np.array([np.repeat(ax, N), np.random.choice([1, -1], p=p, size=(N,), replace=True)]).T
-
-
-def measure_once(rho: np.array, ax: int):
-    '''
-    Simulates a quantum measurement for the same axis in a row.
-
-    :param rho: sample state
-    :param ax : measurement axis
-        1: x-axis
-        2: y-axis
-        3: z-axis
-    :param N  : number of samples provided
-    :return: result of the measurment of N identical states rho and the
-        corresponding axis
-    '''
-    p = np.trace(np.array([rho@const.edensity[(ax, 0)], rho@const.edensity[(ax, 1)]]), axis1=-2, axis=-1)
-    M = const.spovm[ax]
-
-    return np.array([ax, np.random.choice([1, -1], p=p)])
-
-
-def measure_multiple(rho: np.array, axes: np.array, N: int):
-    '''
-    Simulates several quantum measurements for differents axes.
+    Simulates several quantum measurements for a array of operators.
 
     :param rho : sample state
-    :param axes: measurement axis
-        1: x-axis
-        2: y-axis
-        3: z-axis
-    :param N   : number of samples provided
-    :return: result of the measurment of N identical states rho and the
-        corresponding axis
+    (:param M   : the set of POVM on which the measurement is based on)
+    :param axes: array of indices of the chosen operator of the set of POVM
+    :return: array of the N measured results and the corresponding axis
     '''
-    D = np.array([])
-    M = np.array([])
-    for ax in axes:
-        m, d = measure_once(rho, ax)
-        D = np.append(D, d)
-        M = np.append(M, m)
+    p0 = np.trace([rho@const.edensity[(ax, 0)] for ax in axes], axis1=-2, axis2=-1)
+    if np.all(np.imag(p0)<1e-14):
+        p0 = np.real(p0)
+    else:
+        raise ValueError('Contradiction: Complex probabilities!')
 
-    return M, D
+    p1 = 1-p0
+    p  = np.array([p0, p1]).T
+
+    choice = lambda p: np.random.choice([0, 1], p=p)
+
+    return np.array([axes, np.apply_along_axis(choice, 1, p)]).T
 
 
-def recons(D: np.array, method='likelihood', iter=100, M=None):
+def recons(D: np.array, method='likelihood', iter=1000, M=None):
     '''
     Reconstruct the state according to measuremnt and stated method.
 
-    :param D     : mesurement result, datatype: [axis, eigenvalue]
+    :param D     : mesurement result, datatype: array of [axis, decoded measured eigenvalue]
+        (see "const.py" for decoding scheme)
     :param method: reconstruction method
         likelihood: reconstruction according to maximum likelihood estimator
         inversion : reconstruction according to linear inversion
     :param iter  : number of iteration needed for the maximum likelihood method
+    :param M     : array of POVMs
     :return: reconstructed state
     '''
-    if method!='likelihood' and method!='inversion':
-        raise ValueError('Inappropriate value for method. Chose either "likelihood" or "inversion"!')
-    elif method=='likelihood':
+    if method=='likelihood':
         return mle.iterative(D, iter)
     elif method=='inversion':
-        if M==None:
-            raise ValueError("Inappropriate value for the POVM's. If method linear inversion is chosen you have to specify the POVM's.")
-        return inversion.linear(M, D)
+        if np.any(M==None):
+            raise ValueError("Inappropriate value for the POVM's. If method linear inversion is chosen, you have to specify the POVM's.")
+        n = inversion.count(D, np.zeros((len(M), 2)))
+        return inversion.linear(n, const.spovm)
+    else:
+        raise ValueError('Inappropriate value for method. Chose either "likelihood" or "inversion"!')
