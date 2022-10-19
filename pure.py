@@ -72,7 +72,10 @@ def unitary_to_density(dim: int, N: int):
     :return: array of N uniformly distributed density matrices
     '''
     U   = unitary_group.rvs(dim, size=N)
-    UH  = np.transpose(np.conjugate(U), axes=[0, 2, 1])
+    try:
+        UH  = np.transpose(np.conjugate(U), axes=[0, 2, 1])
+    except:
+        UH = np.transpose(np.conjugate(U))
     rho = U@np.array([[1, 0], [0, 0]])@UH
 
     return rho
