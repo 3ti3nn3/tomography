@@ -97,23 +97,33 @@ def main(argv = None):
     # # D  = np.array([d1, d2, d3, a1, a2, a3])
     # print(mle.iterative(D, 1000))
 
-    # 6: simualte quantum measurement
-    N     = 1000000
+    # 6: simualte quantum measurement and reconstruction
+    # N     = 10000
+    #
+    # rho_0 = pure.unitary_to_density(2, 1)
+    # print(rho_0)
+    #
+    # axes  = np.random.randint(0, high=4, size=N)
+    # D     = simulate.measure(rho_0, axes)
+    # print('Measurement simulation finished.')
+    #
+    # rho_1 = simulate.recons(D, iter=10)
+    # print(rho_1)
+    # print(general.hilbert_schmidt_distance(rho_0, rho_1))
+    #
+    # rho_2 = simulate.recons(D, M=const.spovm, method='inversion')
+    # print(rho_2)
+    # print(general.hilbert_schmidt_distance(rho_0, rho_2))
+    #
+    # visualization.qubit_3(('Original', rho_0), ('MLE', [rho_1]), ('Inversion', [rho_2]))
 
-    rho_0 = pure.unitary_to_density(2, 1)
-    print(rho_0)
+    # 7: figuring out whether the reconstruction method work correctly
+    # rho_0 = pure.unitary_to_density(2, 1)
+    # visualization.dependency_N(rho_0, 200)
 
-    axes  = np.random.randint(0, high=4, size=N)
-    D     = simulate.measure(rho_0, axes)
-    print('Measurement simulation finished.')
-
-    rho_1 = simulate.recons(D, M=const.spovm, iter=1000)
-    print(rho_1)
-    print(general.hilbert_schmidt_distance(rho_0, rho_1))
-
-    rho_2 = simulate.recons(D, M=const.spovm, method='inversion')
-    print(rho_2)
-    print(general.hilbert_schmidt_distance(rho_0, rho_2))
+    # 8: figuring out which number of iterations is sufficient
+    # rho_0 = pure.unitary_to_density(2, 1)
+    # visualization.dependency_iter(rho_0, 1000, N=10000)
 
 
 if __name__ == '__main__':
