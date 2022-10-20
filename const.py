@@ -16,8 +16,8 @@ spin_ind[-1] = 0
 se = np.eye(2)
 sx = np.array([[0, 1],
                    [1, 0]])
-sy = np.array([[0, 1j],
-                   [-1j, 0]])
+sy = np.array([[0, -1j],
+            [1j, 0]])
 sz = np.array([[1, 0],
                    [0, -1]])
 sa  = np.array([sx, sy, sz])
