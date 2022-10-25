@@ -1,11 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import qutip as qt
+import pandas as pd
 
 import general
 import const
 import simulate
-
+import mle
+import inversion
+import speed
 
 def qubit(points=np.array([None]), states=np.array([None]), kind='point', angles=[-60, 30]):
     '''
@@ -131,48 +134,47 @@ def expectation_distribution(rho, n_bins=10):
     plt.show()
 
 
-def dependency_N(rho_0: np.array, N_max: int, iter=1000, M=const.spovm):
+def hilbert_dist(rho_0: np.array, M: np.array, N_max: int, iter=100):
     '''
     Plots the N dependency of the Hilbert-Schmidt distance.
 
     :param rho_0 : state to be reconstrected
     :param N_max : maximal N
+    :param M     : set of POVMs
     :param iter  : number of iteration needed for the maximum likelihood method
-    :param M     : array of POVMs needed for linear inversion
-    :return: N-HSD plots for mle and linear inversion, developmemt of the reconstruction
+    :return: N-HSD plots for mle and linear inversion and developememt of the reconstruction
         visualized on the Bloch sphere
     '''
-    N_points = 10
     dim      = rho_0.shape[0]
-    N        = np.ceil(np.linspace(1, N_max, N_points))
+    steps    = np.logspace(0, np.log(N_max), 50, dtype=np.int64)
+    n_steps  = len(steps)
 
-    rho_mle  = np.empty((N_points, dim, dim), dtype=np.complex)
-    rho_inv  = np.empty((N_points, dim, dim), dtype=np.complex)
-    hsd_mle  = np.empty(N_points, dtype=np.float)
-    hsd_inv  = np.empty(N_points, dtype=np.float)
+    rho_mle  = np.empty((n_steps, dim, dim), dtype=np.complex)
+    rho_inv  = np.empty((n_steps, dim, dim), dtype=np.complex)
+    hsd_mle  = np.empty(n_steps, dtype=np.float)
+    hsd_inv  = np.empty(n_steps, dtype=np.float)
+
+    D = simulate.measure(rho_0, N_max, M)
 
     # calculate data points for plots
-    for i in range(N_points):
-        axes  = np.random.randint(0, high=4, size=int(N[i]))
-        D     = simulate.measure(rho_0, axes)
-
-        rho_1      = simulate.recons(D, iter=iter)
+    for i in range(n_steps):
+        rho_1      = mle.iterative(D[:steps[i]], M, iter=iter)
         rho_mle[i] = rho_1
-        hsd_mle[i] = general.hilbert_schmidt_distance(rho_0, rho_1)
+        hsd_mle[i] = general.hilbert_dist(rho_0, rho_1)
 
-        rho_2      = simulate.recons(D, M=M, method='inversion')
+        rho_2      = inversion.linear(D[:steps[i]], M)
         rho_inv[i] = rho_2
-        hsd_inv[i] = general.hilbert_schmidt_distance(rho_0, rho_2)
+        hsd_inv[i] = general.hilbert_dist(rho_0, rho_2)
 
     # plots
     fig, axs = plt.subplots(1, 3, figsize=(30, 5))
 
     fig.suptitle('N-scaling of Hilber-Schmidt distance')
 
-    axs[0].plot(N, hsd_mle, c='blue')
-    axs[0].plot(N, hsd_inv, c='violet')
-    axs[1].plot(N, hsd_mle, c='blue')
-    axs[2].plot(N, hsd_inv, c='violet')
+    axs[0].plot(steps, hsd_mle, c='blue')
+    axs[0].plot(steps, hsd_inv, c='violet')
+    axs[1].plot(steps, hsd_mle, c='blue')
+    axs[2].plot(steps, hsd_inv, c='violet')
 
     axs[0].set_title('Comparison')
     axs[1].set_title('Maximum likelihood estimate')
@@ -186,6 +188,14 @@ def dependency_N(rho_0: np.array, N_max: int, iter=1000, M=const.spovm):
     axs[1].set_xlim(1, N_max)
     axs[2].set_xlim(1, N_max)
 
+    axs[0].set_xscale('log')
+    axs[1].set_xscale('log')
+    axs[2].set_xscale('log')
+
+    axs[0].set_yscale('log')
+    axs[1].set_yscale('log')
+    axs[2].set_yscale('log')
+
     axs[0].set_ylabel('Hilbert-Schmidt distance')
 
     plt.show()
@@ -194,42 +204,202 @@ def dependency_N(rho_0: np.array, N_max: int, iter=1000, M=const.spovm):
     qubit_3(('Original', rho_0), ('MLE', rho_mle), ('Inversion', rho_inv))
 
 
-def dependency_iter(rho_0: np.array, iter_max: int, N=200):
+def hilbert_dist_iter(rho_0: np.array, M:np.array, iter_max: int, N=1000):
     '''
     Plots the iter dependency of the Hilbert-Schmidt distance.
 
     :param rho_0   : state to be reconstructed
+    :param M       : set of POVMs
     :param iter_max: maximal number of iterations
     :param N       : number of measurments
     :return: plots for iteration dependency of the Hilber-Schmidt distance
     '''
-    iter_points = 10
-    dim         = rho_0.shape[0]
-    iter        = np.ceil(np.linspace(1, iter_max, iter_points))
+    dim     = rho_0.shape[0]
+    steps   = np.linspace(1, iter_max, 50, dtype=np.int64)
+    n_steps = len(steps)
 
-    rho_mle  = np.empty((iter_points, dim, dim), dtype=np.complex)
-    hsd_mle  = np.empty(iter_points, dtype=np.float)
+    rho_mle  = np.empty((n_steps, dim, dim), dtype=np.complex)
+    hsd_mle  = np.empty(n_steps, dtype=np.float)
+
+    D = simulate.measure(rho_0, N, M)
 
     # calculate data points for plots
-    for i in range(iter_points):
-        axes  = np.random.randint(0, high=4, size=int(N))
-        D     = simulate.measure(rho_0, axes)
-
-        rho        = simulate.recons(D, iter=int(iter[i]))
+    for i in range(n_steps):
+        rho        = mle.iterative(D, M, iter=steps[i])
         rho_mle[i] = rho
-        hsd_mle[i] = general.hilbert_schmidt_distance(rho_0, rho)
+        hsd_mle[i] = general.hilbert_dist(rho_0, rho)
 
     # plots
     plt.figure(figsize=(15, 9))
 
     plt.title('Iteration-scaling of Hilber-Schmidt distance')
 
-    plt.plot(iter, hsd_mle, c='blue')
+    plt.plot(steps, hsd_mle, c='blue')
     plt.xlabel('iterations')
     plt.xlim(1, iter_max)
     plt.ylabel('Hilbert-Schmidt distance')
+    plt.yscale('log')
 
     plt.show()
 
     # show developmemt of the
     qubit_3(('Original', rho_0), ('MLE', rho_mle))
+
+
+def bures_dist(rho_0: np.array, M: np.array, N_max: int, iter=50):
+    '''
+    Plots the N dependency of Bures distance.
+
+    :param rho_0 : state to be reconstrected
+    :param M     : set of POVMs
+    :param N_max : maximal N
+    :param iter  : number of iteration needed for the maximum likelihood method
+    :return: N-bures_dist plots for mle and linear inversion
+    '''
+    dim      = rho_0.shape[0]
+    steps    = np.logspace(0, np.log(N_max), 20, dtype=np.int64)
+    n_steps  = len(steps)
+
+    rho_mle  = np.empty((n_steps, dim, dim), dtype=np.complex)
+    rho_inv  = np.empty((n_steps, dim, dim), dtype=np.complex)
+    bur_mle  = np.empty(n_steps, dtype=np.float)
+    bur_inv  = np.empty(n_steps, dtype=np.float)
+
+    D = simulate.measure(rho_0, N_max, M)
+
+    # calculate data points for plots
+    for i in range(n_steps):
+        print(i)
+
+        rho_1      = mle.iterative(D[:steps[i]], M, iter=iter)
+        rho_mle[i] = rho_1
+        bur_mle[i] = general.bures_dist(rho_0, rho_1)
+        print('Maximum Likelihood estimate done!')
+
+        rho_2      = inversion.linear(D[:steps[i]], M)
+        rho_inv[i] = rho_2
+        try:
+            bur_inv[i] = general.bures_dist(rho_0, rho_2)
+        except:
+            bur_inv[i] = 1-general.fidelity(rho_0, rho_2)
+        print('Linear Inversion done!')
+
+    # plots
+    fig, axs = plt.subplots(1, 3, figsize=(30, 5))
+
+    fig.suptitle('N-scaling of Bures distance')
+
+    axs[0].plot(steps, bur_mle, c='blue')
+    axs[0].plot(steps, bur_inv, c='violet')
+    axs[1].plot(steps, bur_mle, c='blue')
+    axs[2].plot(steps, bur_inv, c='violet')
+
+    axs[0].set_title('Comparison')
+    axs[1].set_title('Maximum likelihood estimate')
+    axs[2].set_title('Linear inversion')
+
+    axs[0].set_xlabel(r'$N$')
+    axs[1].set_xlabel(r'$N$')
+    axs[2].set_xlabel(r'$N$')
+
+    axs[0].set_xlim(1, N_max)
+    axs[1].set_xlim(1, N_max)
+    axs[2].set_xlim(1, N_max)
+
+    axs[0].set_xscale('log')
+    axs[1].set_xscale('log')
+    axs[2].set_xscale('log')
+
+    axs[0].set_yscale('log')
+    axs[1].set_yscale('log')
+    axs[2].set_yscale('log')
+
+    axs[0].set_ylabel('Bures distance')
+
+    plt.show()
+
+    # show developmemt of the
+    qubit_3(('Original', rho_0), ('MLE', rho_mle))
+
+
+def infidelity(rho_0: np.array, M: np.array, N_max: int, iter=50):
+    '''
+    Plots the N dependency of infidelity.
+
+    :param rho_0 : state to be reconstrected
+    :param M     : set of POVMs
+    :param N_max : maximal N
+    :param iter  : number of iteration needed for the maximum likelihood method
+    :return: N-bures_dist plots for mle and linear inversion
+    '''
+    dim      = rho_0.shape[0]
+    steps    = np.logspace(0, np.log(N_max), 20, dtype=np.int64)
+    n_steps  = len(steps)
+
+    rho_mle  = np.zeros((n_steps, dim, dim), dtype=np.complex)
+    rho_inv  = np.zeros((n_steps, dim, dim), dtype=np.complex)
+    inf_mle  = np.zeros(n_steps, dtype=np.float)
+    inf_inv  = np.zeros(n_steps, dtype=np.float)
+
+    D = simulate.measure(rho_0, N_max, M)
+
+    # calculate data points for plots
+    for i in range(n_steps):
+        rho_mle[i] = mle.iterative(D[:steps[i]], M, iter=iter)
+        inf_mle[i] = 1-general.fidelity(rho_0, rho_mle[i])
+
+        rho_inv[i] = inversion.linear(D[:steps[i]], M)
+        inf_inv[i] = 1-general.fidelity(rho_0, rho_inv[i])
+
+    # plots
+    fig, axs = plt.subplots(1, 3, figsize=(30, 5))
+
+    fig.suptitle('N-scaling of infidelity')
+
+    axs[0].plot(steps, inf_mle, c='blue')
+    axs[0].plot(steps, inf_inv, c='violet')
+    axs[1].plot(steps, inf_mle, c='blue')
+    axs[2].plot(steps, inf_inv, c='violet')
+
+    axs[0].set_title('Comparison')
+    axs[1].set_title('Maximum likelihood estimate')
+    axs[2].set_title('Linear inversion')
+
+    axs[0].set_xlabel(r'$N$')
+    axs[1].set_xlabel(r'$N$')
+    axs[2].set_xlabel(r'$N$')
+
+    axs[0].set_xlim(1, N_max)
+    axs[1].set_xlim(1, N_max)
+    axs[2].set_xlim(1, N_max)
+
+    axs[0].set_xscale('log')
+    axs[1].set_xscale('log')
+    axs[2].set_xscale('log')
+
+    axs[1].set_yscale('log')
+
+    axs[0].set_ylabel('Bures distance')
+
+    plt.show()
+
+    # show developmemt of the
+    qubit_3(('Original', rho_0), ('MLE', rho_mle))
+
+
+def speed_comparison(title, iterations=10, **kwargs):
+    '''
+    Shows the result of speed comparison of arbitrary functions.
+
+    :param title     : title of the plot
+    :param iterations: number of iterations the test function is tested
+    :param **kwargs  : dictionary like objekt of the form "name = (func, list of parameters)"
+    :return: dictionaries of times each test function needed
+    '''
+    data = speed.compare(iterations=10, **kwargs)
+    df   = pd.DataFrame.from_dict(data, orient='index')
+
+    ax = df.plot.bar(figsize=(10, 6), ylabel='time', title=title , legend=False, rot=0)
+    ax.plot()
+
+    plt.show()
