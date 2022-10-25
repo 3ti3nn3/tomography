@@ -1,36 +1,50 @@
 import numpy as np
 
 
-def count(D: np.array, n: np.array):
+def count_unique(D: np.array, n: np.array):
     '''
-    Iterative counter for linear inversion.
+    Iterative counter for linear inversion. Also able to process single measurement
+    as well as batches of measurement as long as they are provided as an array.
 
-    :param D: datatype: array of [axes, measured eigenvalue]
-    :param n: list with number of spin up results and number of spin down reults
-        for corresponding POVM
+    :param D: data measurement
+        dataype: D[i] = [index of POVM]
+    :param n: list of counted POVMs
     :result: updated n
     '''
-    J = len(n)
-    I = np.concatenate(np.transpose(np.meshgrid(np.arange(J), [0, 1]), axes=[2, 1, 0]))
-
-    for i in I:
-        n[tuple(i)] += np.sum(np.all(D==i, axis=1))
+    unique, count = np.unique(D, return_counts=True)
+    n[unique] += count
 
     return n
 
 
-def linear(n: np.array, M: np.array):
+def count(D: np.array, n: np.array):
+    '''
+    Iterative counter for linear inversion. Also able to process single measurement
+    as well as batches of measurement as long as they are provided as an array.
+
+    :param D: data measurement
+        dataype: D[i] = [index of POVM]
+    :param n: list of counted POVMs
+    :result: updated n
+    '''
+    for i in range(len(n)):
+        n[i] += np.sum(D==i)
+
+    return n
+
+
+def linear(D: np.array, M: np.array):
     '''
     Calculates the best estimator according to the theory of linear inversion.
 
-    :param n: list with number of spin up results and number of spin down reults
-        for corresponding POVM
+    :param D: data measurement
+        dataype: D[i] = [index of POVM]
     :param M: set of POVM
     :return: the linear inversion estimator
     '''
-    N     = np.sum(n, axis=1)
-    p     = (n[:,1] - n[:,0])/N
-    M     = np.array(M)
+    N     = len(D)
+    n     = count(D, np.zeros(len(M), dtype=int))
+    p     = n/N
     T     = np.einsum('alk,bkl->ab', M, M)
     T_inv = np.linalg.inv(T)
 
