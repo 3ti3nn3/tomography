@@ -1,6 +1,8 @@
 import numpy as np
+import numpy.linalg as LA
 import matplotlib.pyplot as plt
 import pandas as pd
+import qutip as qt
 
 import mixed
 import pure
@@ -79,51 +81,88 @@ def main(argv = None):
     # ax.plot()
     # plt.show()
 
-    # 4: linear inversion
-    # M = np.array([const.se, const.sx, const.sy, const.sz])
-    # D = np.array([np.concatenate((np.ones(10)*0, np.ones(10)*1, np.ones(10)*2, np.ones(10)*3)), np.ones(40)]).T
-    # n = inversion.count(D, np.zeros((4, 2)))
-    #
-    # print(inversion.linear(n, M))
-
-    # 5: maximum likelihood estimate
-    # d1 = [1, 0]
-    # d2 = [2, 0]
-    # d3 = [1, 0]
-    # a1 = [1, 1]
-    # a2 = [2, 1]
-    # a3 = [1, 1]
-    # D  = np.array([d1, d2, d3])
-    # # D  = np.array([d1, d2, d3, a1, a2, a3])
-    # print(mle.iterative(D, 1000))
-
-    # 6: simualte quantum measurement and reconstruction
-    # N     = 10000
-    #
+    # 4: simulate quantum measurement and reconstruct according to linear inversion
+    # N     = int(1e06)
     # rho_0 = pure.unitary_to_density(2, 1)
-    # print(rho_0)
+    # M     = const.pauli4
     #
-    # axes  = np.random.randint(0, high=4, size=N)
-    # D     = simulate.measure(rho_0, axes)
-    # print('Measurement simulation finished.')
+    # D       = simulate.measure(rho_0, N, M)
+    # rho_inv = inversion.linear(D, M)
     #
-    # rho_1 = simulate.recons(D, iter=10)
-    # print(rho_1)
-    # print(general.hilbert_schmidt_distance(rho_0, rho_1))
-    #
-    # rho_2 = simulate.recons(D, M=const.spovm, method='inversion')
-    # print(rho_2)
-    # print(general.hilbert_schmidt_distance(rho_0, rho_2))
-    #
-    # visualization.qubit_3(('Original', rho_0), ('MLE', [rho_1]), ('Inversion', [rho_2]))
+    # visualization.qubit_3(('original', rho_0), ('inv', [rho_inv]))
 
-    # 7: figuring out whether the reconstruction method work correctly
+    # 5: simulate quantum measurement and reconstruct according to maximum likelihood estimate
+    # N     = int(1e04)
     # rho_0 = pure.unitary_to_density(2, 1)
-    # visualization.dependency_N(rho_0, 200)
+    # M     = const.pauli6
+    #
+    # D       = simulate.measure(rho_0, N, M)
+    # rho_mle = mle.iterative(D, M, 100)
+    #
+    # visualization.qubit_3(('original', rho_0), ('mle', [rho_mle]))
 
-    # 8: figuring out which number of iterations is sufficient
+    # 6: check convergence of maximum likelihood estimate
+    # N     = int(1e03)
     # rho_0 = pure.unitary_to_density(2, 1)
-    # visualization.dependency_iter(rho_0, 1000, N=10000)
+    # M     = const.pauli4
+    #
+    # visualization.hilbert_dist(rho_0, M, N)
+
+    # 7: check iteration dependency of Hilbert-Schmidt distance
+    # iter_max = 100
+    # rho_0    = pure.unitary_to_density(2, 1)
+    # M        = const.pauli4
+    #
+    # visualization.hilbert_dist_iter(rho_0, M, iter_max)
+
+    # 8: plot bures distance
+    # N     = np.int64(1e06)
+    # rho_0 = pure.unitary_to_density(2, 1)
+    # M     = const.pauli4
+    #
+    # visualization.bures_dist(rho_0, M, N)
+
+    # 9: plot infidelity
+    N     = np.int64(1e05)
+
+    # eigenstates
+    # rho_0 = 1/2*np.array([[1, 1], [1, 1]])
+    # rho_0 = 1/2*np.array([[1, -1j], [1j, 1]])
+    # rho_0 = np.array([[1, 0], [0, 0]])
+    # rho_0 = np.array([-0.32505758+0.32505758j, 0.88807383+0.j])[:, None]@np.array([-0.32505758-0.32505758j, 0.88807383+0.j])[None, :]
+
+    # non eigenstates
+    # rho_0 = 1/2*np.array([[1, -1], [-1, 1]])
+    # rho_0 = 1/2*np.array([[1, 1j], [-1j, 1]])
+    # rho_0 = np.array([[0, 0], [0, 1]])
+
+    # other
+    # rho_0 = mixed.hermitian_to_density(2, 1)[0]
+    rho_0 = pure.unitary_to_density(2, 1)
+
+    # POVMs
+    M = const.pauli4
+
+    # data
+    D4 = simulate.measure(rho_0, N, const.pauli4)
+    D6 = simulate.measure(rho_0, N, const.pauli6)
+
+    # evaluate
+    rho4 = mle.iterative(D4, const.pauli4)
+    rho6 = mle.iterative(D6, const.pauli6)
+
+    print('rho4')
+    print(rho4)
+    print(1-general.fidelity(rho_0, rho4))
+    print(check.purity(rho4))
+    print('rho6')
+    print(rho6)
+    print(1-general.fidelity(rho_0, rho6))
+    print(check.purity(rho6))
+    print('compare')
+    print(1-general.fidelity(rho4, rho6))
+
+    visualization.infidelity(rho_0, M, N)
 
 
 if __name__ == '__main__':
