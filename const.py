@@ -1,51 +1,48 @@
 import numpy as np
 
 
-# decode axis
-ax_ind = {}
-ax_ind['x'] = 1
-ax_ind['y'] = 2
-ax_ind['z'] = 3
-
-# decode spin
-spin_ind = {}
-spin_ind[1]  = 1
-spin_ind[-1] = 0
-
 # Pauli matrices
 se = np.eye(2)
-sx = np.array([[0, 1],
-                   [1, 0]])
-sy = np.array([[0, -1j],
-            [1j, 0]])
-sz = np.array([[1, 0],
-                   [0, -1]])
+sx = np.array([[0, 1], [1, 0]])
+sy = np.array([[0, -1j], [1j, 0]])
+sz = np.array([[1, 0], [0, -1]])
 sa  = np.array([sx, sy, sz])
-spovm = np.array([se, sx, sy, sz])
 
+# standard POVM
+M1 = 1/6*np.array([[1, 1], [1, 1]])
+M4 = 1/6*np.array([[1, -1], [-1, 1]])
+M2 = 1/6*np.array([[1, -1j], [1j, 1]])
+M5 = 1/6*np.array([[1, 1j], [-1j, 1]])
+M3 = 1/3*np.array([[1, 0], [0, 0]])
+M6 = 1/3*np.array([[0, 0], [0, 1]])
 
-# Pauli eigenstates
-estate = np.empty((4, 2, 2), dtype=complex)
-estate[0, 1] = np.array([1, 0])
-estate[0, 0] = np.array([0, 1])
-estate[1, 1] = 1/np.sqrt(2)*np.array([1, 1])
-estate[1, 0] = 1/np.sqrt(2)*np.array([1, -1])
-estate[2, 1] = 1/np.sqrt(2)*np.array([1, 1j])
-estate[2, 0] = 1/np.sqrt(2)*np.array([1, -1j])
-estate[3, 1] = np.array([1, 0])
-estate[3, 0] = np.array([0, 1])
+M_up   = np.array([M1, M2, M3])
+M_down = np.array([M4, M5, M6])
 
-# Pauli eigenstates in density representation
-edensity = np.empty((4, 2, 2, 2), dtype=complex)
-edensity[0, 1] = np.array([[0.5, 0], [0, 0.5]])
-edensity[0, 0] = np.array([[0.5, 0], [0, 0.5]])
-edensity[1, 1] = 1/2*np.array([[1, 1], [1, 1]])
-edensity[1, 0] = 1/2*np.array([[1, -1], [-1, 1]])
-edensity[2, 1] = 1/2*np.array([[1, -1j], [1j, 1]])
-edensity[2, 0] = 1/2*np.array([[1, 1j], [-1j, 1]])
-edensity[3, 1] = np.array([[1, 0], [0, 0]])
-edensity[3, 0] = np.array([[0, 0], [0, 1]])
+# Pauli-4 POVM
+pauli4 = np.array([M1, M2, M3, np.eye(2)-M1-M2-M3])
 
+# Pauli-4 states
+state4 = np.empty((6, 2), dtype=np.complex)
+state4[0] = 1/np.sqrt(2)*np.array([1, 1])
+state4[1] = 1/np.sqrt(2)*np.array([1, 1j])
+state4[2] = np.array([1, 0])
+state4[3] = np.array([-0.32505758+0.32505758j, 0.88807383+0.j])
+
+# Pauli-6 POVM
+pauli6 = np.array([M1, M4, M2, M5, M3, M6])
+
+# Pauli-6 states
+state6 = np.empty((6, 2, 2), dtype=np.complex)
+state6[0] = 1/np.sqrt(2)*np.array([1, 1])
+state6[1] = 1/np.sqrt(2)*np.array([1, -1])
+state6[2] = 1/np.sqrt(2)*np.array([1, 1j])
+state6[3] = 1/np.sqrt(2)*np.array([1, -1j])
+state6[4] = np.array([1, 0])
+state6[5] = np.array([0, 1])
+
+# Pauli string POVM
+string1d = np.array([se/2, sx/2, sy/2, sz/2])
 
 # rotation matrices
 def Rx(alpha):
