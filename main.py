@@ -137,32 +137,17 @@ def main(argv = None):
     # rho_0 = np.array([[0, 0], [0, 1]])
 
     # other
-    # rho_0 = mixed.hermitian_to_density(2, 1)[0]
-    rho_0 = pure.unitary_to_density(2, 1)
+    rho_0 = mixed.hermitian_to_density(2, 1)[0]
+    # rho_0 = pure.unitary_to_density(2, 1)
 
     # POVMs
-    M = const.pauli4
+    M1 = const.pauli4
+    M2 = const.pauli6
 
-    # data
-    D4 = simulate.measure(rho_0, N, const.pauli4)
-    D6 = simulate.measure(rho_0, N, const.pauli6)
+    func1 = ('MLE with Pauli4', mle.iterative)
+    func2 = ('MLE with Pauli6', mle.iterative)
 
-    # evaluate
-    rho4 = mle.iterative(D4, const.pauli4)
-    rho6 = mle.iterative(D6, const.pauli6)
-
-    print('rho4')
-    print(rho4)
-    print(1-general.fidelity(rho_0, rho4))
-    print(check.purity(rho4))
-    print('rho6')
-    print(rho6)
-    print(1-general.fidelity(rho_0, rho6))
-    print(check.purity(rho6))
-    print('compare')
-    print(1-general.fidelity(rho4, rho6))
-
-    visualization.infidelity(rho_0, M, N)
+    visualization.infidelity(rho_0, func1, func2, M1, M2, N)
 
 
 if __name__ == '__main__':
