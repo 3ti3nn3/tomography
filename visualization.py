@@ -322,48 +322,58 @@ def bures_dist(rho_0: np.array, M: np.array, N_max: int, iter=50):
     qubit_3(('Original', rho_0), ('MLE', rho_mle))
 
 
-def infidelity(rho_0: np.array, M: np.array, N_max: int, iter=50):
+def infidelity(rho_0: np.array, func1, func2, M1: np.array, M2: np.array, N_max: int):
     '''
     Plots the N dependency of infidelity.
 
     :param rho_0 : state to be reconstrected
-    :param M     : set of POVMs
+    :param func1 : first function how to create a estimate
+        datatype: tuple (describtion: str, function)
+    :param func2 : second function how to create a estimate
+        datatype: tuple (describtion: str, function)
+    :param M1    : set of POVMs for func1
+    :param M2    : set of POVMs for func2
     :param N_max : maximal N
-    :param iter  : number of iteration needed for the maximum likelihood method
     :return: N-bures_dist plots for mle and linear inversion
     '''
     dim      = rho_0.shape[0]
     steps    = np.logspace(0, np.log(N_max), 20, dtype=np.int64)
     n_steps  = len(steps)
 
-    rho_mle  = np.zeros((n_steps, dim, dim), dtype=np.complex)
-    rho_inv  = np.zeros((n_steps, dim, dim), dtype=np.complex)
-    inf_mle  = np.zeros(n_steps, dtype=np.float)
-    inf_inv  = np.zeros(n_steps, dtype=np.float)
+    rho_m1  = np.zeros((n_steps, dim, dim), dtype=np.complex)
+    rho_m2  = np.zeros((n_steps, dim, dim), dtype=np.complex)
+    inf_m1  = np.zeros(n_steps, dtype=np.float)
+    inf_m2  = np.zeros(n_steps, dtype=np.float)
 
-    D = simulate.measure(rho_0, N_max, M)
+    if np.all(M1==M2):
+        D  = simulate.measure(rho_0, N_max, M1)
+        D1 = D
+        D2 = D
+    else:
+        D1 = simulate.measure(rho_0, N_max, M1)
+        D2 = simulate.measure(rho_0, N_max, M2)
 
     # calculate data points for plots
     for i in range(n_steps):
-        rho_mle[i] = mle.iterative(D[:steps[i]], M, iter=iter)
-        inf_mle[i] = 1-general.fidelity(rho_0, rho_mle[i])
+        rho_m1[i] = func1[1](D1[:steps[i]], M1)
+        inf_m1[i] = 1-general.fidelity(rho_0, rho_m1[i])
 
-        rho_inv[i] = inversion.linear(D[:steps[i]], M)
-        inf_inv[i] = 1-general.fidelity(rho_0, rho_inv[i])
+        rho_m2[i] = func2[1](D2[:steps[i]], M2)
+        inf_m2[i] = 1-general.fidelity(rho_0, rho_m2[i])
 
     # plots
     fig, axs = plt.subplots(1, 3, figsize=(30, 5))
 
     fig.suptitle('N-scaling of infidelity')
 
-    axs[0].plot(steps, inf_mle, c='blue')
-    axs[0].plot(steps, inf_inv, c='violet')
-    axs[1].plot(steps, inf_mle, c='blue')
-    axs[2].plot(steps, inf_inv, c='violet')
+    axs[0].plot(steps, inf_m1, c='blue', label=func1[0])
+    axs[0].plot(steps, inf_m2, c='violet', label=func2[0])
+    axs[1].plot(steps, inf_m1, c='blue')
+    axs[2].plot(steps, inf_m2, c='violet')
 
     axs[0].set_title('Comparison')
-    axs[1].set_title('Maximum likelihood estimate')
-    axs[2].set_title('Linear inversion')
+    axs[1].set_title(func1[0])
+    axs[2].set_title(func2[0])
 
     axs[0].set_xlabel(r'$N$')
     axs[1].set_xlabel(r'$N$')
@@ -377,14 +387,19 @@ def infidelity(rho_0: np.array, M: np.array, N_max: int, iter=50):
     axs[1].set_xscale('log')
     axs[2].set_xscale('log')
 
-    axs[1].set_yscale('log')
+    if func1[1]!=inversion.linear and func2[1]!=inversion.linear:
+        axs[0].set_yscale('log')
+        axs[1].set_yscale('log')
+        axs[2].set_yscale('log')
+    elif func1[1]==inversion.linear:
+        axs[2].set_yscale('log')
+    elif func2[1]==inversion.linear:
+        axs[1].set_yscale('log')
 
-    axs[0].set_ylabel('Bures distance')
+    axs[0].set_ylabel('infidelity')
+    axs[0].legend()
 
     plt.show()
-
-    # show developmemt of the
-    qubit_3(('Original', rho_0), ('MLE', rho_mle))
 
 
 def speed_comparison(title, iterations=10, **kwargs):
