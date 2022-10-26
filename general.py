@@ -21,8 +21,10 @@ def expect_xyz(rho: np.array):
     :param rho: state in density matrix representation
     :return: array of the three expectation values
     '''
-    return np.real([expect(const.sx, rho), expect(const.sy, rho), expect(const.sz, rho)])
-
+    try:
+        return np.real([expect(const.sx, rho), expect(const.sy, rho), expect(const.sz, rho)]).T
+    except:
+        return np.real([expect(const.sx, rho), expect(const.sy, rho), expect(const.sz, rho)])
 
 def hilbert_dist(rho_1: np.array, rho_2: np.array):
     '''
