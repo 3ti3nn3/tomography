@@ -1,2 +1,4 @@
 # ignore all jupyter notebooks
 * .ipynb
+__pycache__/
+.DS_Store
