@@ -30,8 +30,8 @@ def hilbert_dist(rho_1: np.array, rho_2: np.array):
     '''
     Calculates the Hilbert-Schmidt distance.
 
-    :param rho1: density representation of the first states
-    :param rho2: density representation of the second state
+    :param rho_1: density representation of the first states
+    :param rho_2: density representation of the second state
     :return: Hilbert-Schmidt distance
     '''
     return np.real(np.trace((rho_1-rho_2)**2))
@@ -41,8 +41,8 @@ def bures_dist(rho_1: np.array, rho_2: np.array):
     '''
     Calculates the Bures distance of the given states according to qutip.
 
-    :param rho1: density representation of the first state
-    :param rho2: density represnetation of the second state
+    :param rho_1: density representation of the first state
+    :param rho_2: density represnetation of the second state
     :return: fidelity
     '''
     Qrho_1 = qt.Qobj(rho_1)
@@ -55,11 +55,25 @@ def fidelity(rho_1: np.array, rho_2: np.array):
     '''
     Calculates the fidelity of the given states according to qutip.
 
-    :param rho1: density representation of the first state
-    :param rho2: density represnetation of the second state
+    :param rho_1: density representation of the first state
+    :param rho_2: density represnetation of the second state
     :return: fidelity
     '''
     Qrho_1 = qt.Qobj(rho_1)
     Qrho_2 = qt.Qobj(rho_2)
 
     return qt.fidelity(Qrho_1, Qrho_2)
+
+
+def euclidean_dist(rho_1: np.array, rho_2: np.array):
+    '''
+    Calculates the euclidean distance between the Bloch vector of the given states.
+
+    :param rho_1: density representation of the first state
+    :param rho_2: density representation of the second state
+    :return: euclidean distance of the Bloch vectors
+    '''
+    bloch_1 = expect_xyz(rho_1)
+    bloch_2 = expect_xyz(rho_2)
+
+    return np.sqrt(np.sum((bloch_1-bloch_2)**2))
