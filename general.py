@@ -1,6 +1,22 @@
 import numpy as np
 import qutip as qt
 import const
+import check
+
+
+def H(rho: np.array):
+    '''
+    Calculates the conjugate transpose of an array.
+
+    :param rho: Nxdxd or dxd array of density matrices
+    :return: complex conjugate
+    '''
+    if len(rho.shape)==2:
+        return np.transpose(np.conjugate(rho))
+    elif len(rho.shape)==3:
+        return np.transpose(np.conjugate(rho), axes=[0, 2, 1])
+    else:
+        raise ValueError('Unexpected shape of rho in "general.H" encountered.')
 
 
 def expect(operator: np.array, rho: np.array):
@@ -78,3 +94,44 @@ def fidelity(rho_1: np.array, rho_2: np.array):
     Qrho_2 = qt.Qobj(rho_2)
 
     return qt.fidelity(Qrho_1, Qrho_2)
+
+
+def extract_angles(rho: np.array):
+    '''
+    Determines the orientation of a given state.
+
+    :param rho:
+    :return: phi, theta
+    '''
+    n = expect_xyz(rho)
+
+
+def realign_povm(M: np.array, phi: np.float, theta: np.float):
+    '''
+    Rotates the set of POVM by the given angles.
+
+    :param M    : set of POVMs
+    :param phi  : polar angle
+    :param theta: angular angle
+    :return: realigned POVM
+    '''
+    R = const.Rz(np.array([phi]))@const.Ry(np.array([theta]))
+
+    return R@M@H(R)
+
+
+def extract_param(rho: np.array):
+    '''
+    Determines the angles of rho's orientation and the distance r.
+
+    :param rho: density representation of state
+    :return: for pure states: (phi, theta)
+        for mixed states: (r, phi, theta)
+    '''
+    n = expect_xyz(rho)
+
+    r     = np.sqrt(np.sum(n**2))
+    phi   = np.arctan2(n[1], n[0])
+    theta = np.arccos(n[2]/r)
+
+    return r, phi, theta
