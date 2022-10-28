@@ -48,7 +48,7 @@ def generate_uniform(N: int):
     return phi, theta
 
 
-def angles_to_density(phi, theta):
+def rotation_to_density(phi, theta):
     '''
     Takes polar and azimuth angles and builds a vector of expecation values in cartesian coordinates.
 
@@ -81,7 +81,7 @@ def unitary_to_density(dim: int, N: int):
     return rho
 
 
-def direct_to_density(phi: np.array, theta: np.array):
+def angles_to_density(phi: np.array, theta: np.array):
     '''
     Takes polar and azimuth angles and builds a state in computational basis using
     array representation. Is the same idea as 'angles_to_states' but avoids using QuTip.

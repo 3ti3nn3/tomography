@@ -66,25 +66,3 @@ def measure(rho: np.array, N: int, M: np.array):
     r     = np.random.uniform(size=N)
 
     return np.argmax(p_cum>r[:, None], axis=1)
-
-
-def recons(D: np.array, method='likelihood', M=const.pauli4, iter=1000):
-    '''
-    Reconstruct the state according to provided data and stated method.
-
-    :param D     : mesurement data
-        datatype: D[i] = [index, spin up measured yes(=1) or no(=0)]
-    :param method: reconstruction method
-        likelihood: reconstruction according to maximum likelihood estimator
-        inversion : reconstruction according to linear inversion
-    :param iter  : number of iterations needed for the maximum likelihood method
-    :param M     : array of POVMs
-    :return: reconstructed state
-    '''
-    if method=='likelihood':
-        return mle.iterative(D, iter)
-    elif method=='inversion':
-        n = inversion.count(D, np.zeros((len(M), 2)))
-        return inversion.linear(n)
-    else:
-        raise ValueError('Inappropriate value for method. Chose either "likelihood" or "inversion"!')

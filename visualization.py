@@ -46,9 +46,11 @@ def qubit_3(rho_0: (str, np.array), rho_1=(None, np.array([None])), rho_2=(None,
     '''
     Visualizes three different states.
 
-    :param rho_1: first state in density representation, dataype: (name, state)
-    :param rho_2: second state in density representation, dataype: (name, array of states)
-    :param rho_3: third state in density representation, dataype: (name, array of states)
+    :param rho_1 : first state in density representation, dataype: (name, state)
+    :param rho_2 : second state in density representation, dataype: (name, array of states)
+    :param rho_3 : third state in density representation, dataype: (name, array of states)
+    :param angles: angles of the perspective of the Bloch sphere
+    :return:
     '''
     b              = qt.Bloch()
     b.point_marker = 'o'
@@ -91,11 +93,11 @@ def qubit_3(rho_0: (str, np.array), rho_1=(None, np.array([None])), rho_2=(None,
 
 def expectation_distribution(rho, n_bins=10):
     '''
-    Visualizes the three different Pauli expectation values.
+    Visualizes the Pauli expectation values.
 
-    :param rho: sample of state
+    :param rho   : sample of state
     :param n_bins: bin width of histogramm
-    ;return:
+    :return:
     '''
     N = len(rho)
 
@@ -148,8 +150,7 @@ def hilbert_dist(rho_0: np.array, M: np.array, N_max: int, n_mean: int, iter=100
     :param N_max : maximal N
     :param M     : set of POVMs
     :param iter  : number of iteration needed for the maximum likelihood method
-    :return: N-HSD plots for mle and linear inversion and developememt of the reconstruction
-        visualized on the Bloch sphere
+    :return:
     '''
     dim      = rho_0.shape[0]
     steps    = np.logspace(2, np.log10(N_max), 10, dtype=np.int64)
@@ -225,7 +226,7 @@ def hilbert_dist_iter(rho_0: np.array, M:np.array, iter_max: int, D_mean: int, N
     :param M       : set of POVMs
     :param iter_max: maximal number of iterations
     :param N       : number of measurments
-    :return: plots for iteration dependency of the Hilber-Schmidt distance
+    :return:
     '''
     dim     = rho_0.shape[0]
     steps   = np.linspace(1, iter_max, 50, dtype=np.int64)
@@ -274,7 +275,7 @@ def infidelity(rho_0: np.array, func1: tuple, func2: tuple, M1: np.array, M2: np
     :param N_max : maximal size of measurement sample
     :param D_mean: number of mean measurements for mean value
     :param q     : boolean about whether the development should be plotted
-    :return: N-infidelity plots for two different functions
+    :return:
     '''
     dim      = rho_0.shape[0]
     steps    = np.logspace(2, np.log10(N_max), 10, dtype=np.int64)
@@ -523,7 +524,7 @@ def speed_comparison(title, iterations=10, **kwargs):
     :param title     : title of the plot
     :param iterations: number of iterations the test function is tested
     :param **kwargs  : dictionary like objekt of the form "name = (func, list of parameters)"
-    :return: dictionaries of times each test function needed
+    :return: 
     '''
     data = speed.compare(iterations=10, **kwargs)
     df   = pd.DataFrame.from_dict(data, orient='index')

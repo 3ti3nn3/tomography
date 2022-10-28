@@ -26,6 +26,21 @@ def expect_xyz(rho: np.array):
     except:
         return np.real([expect(const.sx, rho), expect(const.sy, rho), expect(const.sz, rho)])
 
+
+def euclidean_dist(rho_1: np.array, rho_2: np.array):
+    '''
+    Calculates the euclidean distance between the Bloch vector of the given states.
+
+    :param rho_1: density representation of the first state
+    :param rho_2: density representation of the second state
+    :return: euclidean distance of the Bloch vectors
+    '''
+    bloch_1 = expect_xyz(rho_1)
+    bloch_2 = expect_xyz(rho_2)
+
+    return np.sqrt(np.sum((bloch_1-bloch_2)**2))
+
+
 def hilbert_dist(rho_1: np.array, rho_2: np.array):
     '''
     Calculates the Hilbert-Schmidt distance.
@@ -63,17 +78,3 @@ def fidelity(rho_1: np.array, rho_2: np.array):
     Qrho_2 = qt.Qobj(rho_2)
 
     return qt.fidelity(Qrho_1, Qrho_2)
-
-
-def euclidean_dist(rho_1: np.array, rho_2: np.array):
-    '''
-    Calculates the euclidean distance between the Bloch vector of the given states.
-
-    :param rho_1: density representation of the first state
-    :param rho_2: density representation of the second state
-    :return: euclidean distance of the Bloch vectors
-    '''
-    bloch_1 = expect_xyz(rho_1)
-    bloch_2 = expect_xyz(rho_2)
-
-    return np.sqrt(np.sum((bloch_1-bloch_2)**2))
