@@ -52,4 +52,7 @@ def hermitian_to_density(dim: int, N: int):
     B   = A@AH
     rho = np.multiply(1/np.trace(B, axis1=-2, axis2=-1)[:, None, None].repeat(2, axis=1).repeat(2, axis=2), B)
 
-    return rho
+    if rho.shape[0]==1:
+        return rho[0]
+    else:
+        return rho

@@ -68,5 +68,5 @@ def Ry(theta):
     return np.transpose([[np.cos(theta/2), -np.sin(theta/2)],
                          [np.sin(theta/2), np.cos(theta/2)]], axes=[2, 0, 1])
 def Rz(phi):
-    return np.transpose([[np.exp(1j*phi/2, dtype=complex), np.zeros(len(phi), dtype=complex)],
-                         [np.zeros(len(phi), dtype=complex), np.exp(-1j*phi/2, dtype=complex)]], axes=[2, 0, 1])
+    return np.transpose([[np.exp(1j*phi/2, dtype=np.complex), np.zeros(len(phi), dtype=np.complex)],
+                         [np.zeros(len(phi), dtype=np.complex), np.exp(-1j*phi/2, dtype=np.complex)]], axes=[2, 0, 1])

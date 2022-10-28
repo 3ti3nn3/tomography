@@ -13,14 +13,15 @@ import speed
 import pure
 import mixed
 
-def qubit(points=np.array([None]), states=np.array([None]), kind='point', angles=[-60, 30]):
+def qubit(points=np.array([None]), vectors=np.array([None]), states=np.array([None]), kind='point', angles=[-60, 30]):
     '''
     Depending on the parameters the function creates vectors or points on the Bloch sphere.
 
-    :param points: Nx2x2 of states in density representation
-    :param states: list of N Quatum objects
-    :param kind  : str which should be either "point" or "vector"
-    :param angles: list of angles from which the Bloch sphere is seen
+    :param points : Nx2x2 of states in density representation
+    :param vectors: Nx2x2 of states in density representation
+    :param states : list of N Quatum objects
+    :param kind   : str which should be either "point" or "vector"
+    :param angles : list of angles from which the Bloch sphere is seen
     '''
     b              = qt.Bloch()
     b.point_marker = 'o'
@@ -35,6 +36,12 @@ def qubit(points=np.array([None]), states=np.array([None]), kind='point', angles
             b.add_points(general.expect_xyz(points).T)
         except:
             b.add_points(general.expect_xyz(points))
+        b.render()
+    if np.all(vectors!= None):
+        try:
+            b.add_vectors(general.expect_xyz(vectors))
+        except:
+            b.add_vectors(general.expect_xyz(vectors))
         b.render()
     if np.all(states != None):
         b.add_states(states, kind=kind)
@@ -344,9 +351,9 @@ def infidelity(rho_0: np.array, func1: tuple, func2: tuple, M1: np.array, M2: np
         qubit_3(('Original', rho_0), ('Method 2', rho_m1), ('Method 2', rho_m2))
 
 
-def infidelity_mean(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_max: int, N_mean: int):
+def infidelity_mean(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_max: int, D_mean: int):
     '''
-    Calculates and plots the infidelity averaged over N_mean different rho_0.
+    Calculates and plots the infidelity averaged over D_mean different rho_0.
 
     :param func1 : first function how to create estimate
         datatype: tuple (description: str, function)
@@ -355,22 +362,22 @@ def infidelity_mean(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_ma
     :param M1    : set of POVMs for func1
     :param M2    : set of POVMs for func2
     :param N_max : maximum size of measurement sample
-    :param N_mean: number of different samples
+    :param D_mean: number of different samples
     :return:
     '''
     dim     = 2
     steps   = np.logspace(0, np.log10(N_max), 50, dtype=np.int64)
     N_steps = len(steps)
-    rho_0   = pure.unitary_to_density(dim, N_mean)
+    rho_0   = pure.unitary_to_density(dim, D_mean)
 
     # initialize data storage
-    rho_m1 = np.empty((N_mean, N_steps, dim, dim), dtype=np.complex)
-    rho_m2 = np.empty((N_mean, N_steps, dim, dim), dtype=np.complex)
-    inf_m1 = np.empty((N_mean, N_steps), dtype=np.float)
-    inf_m2 = np.empty((N_mean, N_steps), dtype=np.float)
+    rho_m1 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
+    rho_m2 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
+    inf_m1 = np.empty((D_mean, N_steps), dtype=np.float)
+    inf_m2 = np.empty((D_mean, N_steps), dtype=np.float)
 
     # creating data
-    for n in range(N_mean):
+    for n in range(D_mean):
         if np.all(M1==M2):
             D  = simulate.measure(rho_0[n], N_max, M1)
             D1 = D
@@ -419,7 +426,7 @@ def infidelity_mean(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_ma
     plt.plot(cont, f(cont, *popt_m1), color='lightblue', label='Fit '+func1[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m1[0], np.sqrt(pcov_m1[0, 0])))
     plt.plot(cont, f(cont, *popt_m2), color='lightgreen', label='Fit '+func2[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m2[0], np.sqrt(pcov_m2[0, 0])))
 
-    plt.title('N-scaling of mean infidelity averaged over {0} randomly picked pure states'.format(N_mean))
+    plt.title('N-scaling of mean infidelity averaged over {0} randomly picked pure states'.format(D_mean))
     plt.xlabel(r'$N$')
     plt.ylabel('mean infidelity')
     plt.legend()
@@ -430,10 +437,10 @@ def infidelity_mean(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_ma
     plt.show()
 
 
-def euclidean_mean(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_max: int, N_mean: int):
+def euclidean_mean(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_max: int, D_mean: int):
     '''
     Calculates and plots the mean euclidean distance between the sample state and the estimator averaged
-    over N_mean randomly picked pure states.
+    over D_mean randomly picked pure states.
 
     :param func1 : first function how to create estimate
         datatype: tuple (description: str, function)
@@ -442,22 +449,22 @@ def euclidean_mean(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_max
     :param M1    : set of POVMs for func1
     :param M2    : set of POVMs for func2
     :param N_max : maximum size of measurement sample
-    :param N_mean: number of different samples
+    :param D_mean: number of different samples
     :return:
     '''
     dim     = 2
     steps   = np.logspace(0, np.log10(N_max), 100, dtype=np.int64)
     N_steps = len(steps)
-    rho_0   = pure.unitary_to_density(dim, N_mean)
+    rho_0   = pure.unitary_to_density(dim, D_mean)
 
     # initialize data storage
-    rho_m1 = np.empty((N_mean, N_steps, dim, dim), dtype=np.complex)
-    rho_m2 = np.empty((N_mean, N_steps, dim, dim), dtype=np.complex)
-    euc_m1 = np.empty((N_mean, N_steps), dtype=np.float)
-    euc_m2 = np.empty((N_mean, N_steps), dtype=np.float)
+    rho_m1 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
+    rho_m2 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
+    euc_m1 = np.empty((D_mean, N_steps), dtype=np.float)
+    euc_m2 = np.empty((D_mean, N_steps), dtype=np.float)
 
     # creating data
-    for n in range(N_mean):
+    for n in range(D_mean):
         if np.all(M1==M2):
             D  = simulate.measure(rho_0[n], N_max, M1)
             D1 = D
@@ -506,7 +513,86 @@ def euclidean_mean(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_max
     plt.plot(cont, f(cont, *popt_m1), color='lightblue', label='Fit '+func1[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m1[0], np.sqrt(pcov_m1[0, 0])))
     plt.plot(cont, f(cont, *popt_m2), color='lightgreen', label='Fit '+func2[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m2[0], np.sqrt(pcov_m2[0, 0])))
 
-    plt.title('N-scaling of mean euclidean distance averaged over {0} randomly picked pure states'.format(N_mean))
+    plt.title('N-scaling of mean euclidean distance averaged over {0} randomly picked pure states'.format(D_mean))
+    plt.xlabel(r'$N$')
+    plt.ylabel('mean euclidean distance')
+    plt.legend()
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim(10, N_max)
+
+    plt.show()
+
+
+def euclidean_mean_adaptive(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_max: int, D_mean: int):
+    '''
+    Calculates and plots the mean euclidean distance between the sample state and the estimator averaged
+    over D_mean randomly picked pure states.
+
+    :param func1 : first function how to create estimate
+        datatype: tuple (description: str, function)
+    :param func2 : second function how to create estimate
+        datatype: tuple (description: str, function)
+    :param M1    : set of POVMs for func1
+    :param M2    : set of POVMs for func2
+    :param N_max : maximum size of measurement sample
+    :param D_mean: number of different samples
+    :return:
+    '''
+    dim     = 2
+    steps   = np.logspace(0, np.log10(N_max), 100, dtype=np.int64)
+    N_steps = len(steps)
+    rho_0   = pure.unitary_to_density(dim, D_mean)
+
+    # initialize data storage
+    rho_m1 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
+    rho_m2 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
+    euc_m1 = np.empty((D_mean, N_steps), dtype=np.float)
+    euc_m2 = np.empty((D_mean, N_steps), dtype=np.float)
+
+    # creating data
+    for n in range(D_mean):
+        # calculate data points for plots
+        for i in range(N_steps):
+            rho_m1[n,i] = func1[1](rho_0[n], M1, steps[i])
+            euc_m1[n,i] = general.euclidean_dist(rho_0[n], rho_m1[n,i])
+
+            rho_m2[n,i] = func2[1](rho_0[n], M1, steps[i])
+            euc_m2[n,i] = general.euclidean_dist(rho_0[n], rho_m2[n,i])
+
+    euc_m1_mean = np.mean(euc_m1, axis=0)
+    euc_m2_mean = np.mean(euc_m2, axis=0)
+    euc_m1_std  = np.std(euc_m1, axis=0)
+    euc_m2_std  = np.std(euc_m2, axis=0)
+
+    # fit data
+    f = lambda x, a, A: A*x**a
+
+    threshold = 1e02
+    popt_m1, pcov_m1 = curve_fit(f, steps[steps>threshold], euc_m1_mean[steps>threshold], p0=[-0.5, 0.3], sigma=euc_m1_std[steps>threshold])
+    popt_m2, pcov_m2 = curve_fit(f, steps[steps>threshold], euc_m2_mean[steps>threshold], p0=[-0.5, 0.3], sigma=euc_m2_std[steps>threshold])
+
+    a0_m1, A0_m1 = popt_m1-np.sqrt(np.diag(pcov_m1))
+    a1_m1, A1_m1 = popt_m1+np.sqrt(np.diag(pcov_m1))
+
+    a0_m2, A0_m2 = popt_m2-np.sqrt(np.diag(pcov_m2))
+    a1_m2, A1_m2 = popt_m2+np.sqrt(np.diag(pcov_m2))
+
+    # plot
+    cont = np.logspace(0, np.log10(N_max), 100)
+
+    plt.figure(figsize=(15, 9))
+
+    plt.fill_between(cont, y1=f(cont, a0_m1, A0_m1), y2=f(cont, a1_m1, A1_m1), color='lightblue', alpha=0.3, label=r'$1\sigma$ environment of '+func1[0])
+    plt.fill_between(cont, y1=f(cont, a0_m2, A0_m2), y2=f(cont, a1_m2, A1_m2), color='lightgreen', alpha=0.3, label=r'$1\sigma$ environment of '+func2[0])
+
+    plt.plot(steps, euc_m1_mean, color='navy', linestyle='None', markersize=3, marker='o', label=func1[0])
+    plt.plot(steps, euc_m2_mean, color='forestgreen', linestyle='None', markersize=3, marker='o', label=func2[0])
+
+    plt.plot(cont, f(cont, *popt_m1), color='lightblue', label='Fit '+func1[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m1[0], np.sqrt(pcov_m1[0, 0])))
+    plt.plot(cont, f(cont, *popt_m2), color='lightgreen', label='Fit '+func2[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m2[0], np.sqrt(pcov_m2[0, 0])))
+
+    plt.title('N-scaling of mean euclidean distance averaged over {0} randomly picked pure states'.format(D_mean))
     plt.xlabel(r'$N$')
     plt.ylabel('mean euclidean distance')
     plt.legend()
@@ -524,7 +610,7 @@ def speed_comparison(title, iterations=10, **kwargs):
     :param title     : title of the plot
     :param iterations: number of iterations the test function is tested
     :param **kwargs  : dictionary like objekt of the form "name = (func, list of parameters)"
-    :return: 
+    :return:
     '''
     data = speed.compare(iterations=10, **kwargs)
     df   = pd.DataFrame.from_dict(data, orient='index')
