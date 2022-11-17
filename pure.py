@@ -4,35 +4,6 @@ from scipy.stats import unitary_group
 import const
 
 
-def generate_linear(n_phi: int, n_theta: int):
-    '''
-    Generates linear distributed states,i.e. linear distributed angles in the allowed range.
-
-    :param n_phi  : number of linear distributed polar points
-    :param n_theta: number of linear distributed azimuth points
-    :return: tuple of two arrays with angles
-    '''
-    phi             = np.linspace(0, 2*np.pi, n_phi)
-    theta           = np.linspace(0, np.pi, n_theta)
-    phi_v, theta_v  = np.meshgrid(phi, theta)
-
-    return phi_v.flatten(), theta_v.flatten()
-
-
-def angles_to_states(phi, theta):
-    '''
-    Takes angles and converts them into states in the compuational basis.
-
-    :param phi  : array or float of polar angles
-    :param theta: array or float of azimuth angles
-    return: Qobj in computational basis
-    '''
-    up     = qt.basis(2, 0)
-    down   = qt.basis(2, 1)
-
-    return np.cos(theta/2).tolist()*up + ( np.sin(theta/2) * np.exp(1j*phi) ).tolist()*down
-
-
 def generate_uniform(N: int):
     '''
     Generates data in compliance with transforming surface element. Data is uniformly smapled according to
@@ -46,6 +17,20 @@ def generate_uniform(N: int):
     phi   = np.random.uniform(-np.pi, np.pi, size=N)
 
     return phi, theta
+
+
+def angles_to_density(phi: np.array, theta: np.array):
+    '''
+    Takes polar and azimuth angles and builds a state in computational basis using
+    array representation.
+
+    :param phi  : array of uniformly distributed polar angles
+    :param theta: array of uniformly distributed azimuth angles
+    :return: array of uniformly distributed states
+    '''
+    Psi = np.array([np.cos(theta/2), np.sin(theta/2)*np.exp(1j*phi)]).T
+
+    return np.einsum('nk,nj->nkj', Psi, np.conjugate(Psi))
 
 
 def rotation_to_density(phi, theta):
@@ -79,17 +64,3 @@ def unitary_to_density(dim: int, N: int):
     rho = U@np.array([[1, 0], [0, 0]])@UH
 
     return rho
-
-
-def angles_to_density(phi: np.array, theta: np.array):
-    '''
-    Takes polar and azimuth angles and builds a state in computational basis using
-    array representation. Is the same idea as 'angles_to_states' but avoids using QuTip.
-
-    :param phi  : array of uniformly distributed polar angles
-    :param theta: array of uniformly distributed azimuth angles
-    :return: array of uniformly distributed states
-    '''
-    Psi = np.array([np.cos(theta/2), np.sin(theta/2)*np.exp(1j*phi)]).T
-
-    return np.einsum('nk,nj->nkj', Psi, np.conjugate(Psi))

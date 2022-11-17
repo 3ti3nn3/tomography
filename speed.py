@@ -1,6 +1,7 @@
 import numpy as np
 import time
 
+
 def measure(func, *args, iterations=10):
     '''
     Measures the speed of the given function.
@@ -13,10 +14,16 @@ def measure(func, *args, iterations=10):
     t0 = np.empty(iterations, dtype=float)
     t1 = np.empty(iterations, dtype=float)
 
-    for i in range(iterations):
-        t0[i] = time.time()
-        func(*args)
-        t1[i] = time.time()
+    try:
+        for i in range(iterations):
+            t0[i] = time.time()
+            func(*args)
+            t1[i] = time.time()
+    except:
+        for i in range(iterations):
+            t0[i] = time.time()
+            func()
+            t1[i] = time.time()
 
     return np.mean(t1-t0)
 

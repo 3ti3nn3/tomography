@@ -1,5 +1,7 @@
 import numpy as np
 import const
+import general
+from scipy.stats import unitary_group
 
 
 def generate_uniform(N: int):
@@ -39,8 +41,11 @@ def blochvector_to_density(r: np.array, phi: np.array, theta: np.array):
 
 
 def hermitian_to_density(dim: int, N: int):
+    return sample_hilbert(dim, N)
+
+def sample_hilbert(dim: int, N: int):
     '''
-    Creates random mixed states according to AA^degga/tr(AA^degga).
+    Creates random mixed states according to Hilbert Schmidt measure.
 
     :param dim: dimension of the needed random state
     :param N  : number of random states
@@ -56,3 +61,25 @@ def hermitian_to_density(dim: int, N: int):
         return rho[0]
     else:
         return rho
+
+
+def sample_bures(dim: int, N: int):
+    '''
+    Creates random mixed states accordning to Bures distance measure.
+
+    :param dim: dimension of the needed random states
+    :param N  : number of random states
+    :return: array of N according to Bures distance measure distributed states
+    '''
+    A  = np.random.normal(size=[N, dim, dim]) + 1j*np.random.normal(size=[N, dim, dim])
+    AH = general.H(A)
+
+    U  = unitary_group.rvs(dim, size=N)
+    UH = general.H(U)
+
+    rho = (np.eye(dim)+U) @ A@AH @ (np.eye(dim)+UH)
+
+    if rho.shape[0]==1:
+        return rho[0]/np.trace(rho[0])
+    else:
+        return np.multiply(1/np.trace(rho, axis1=-2, axis2=-1)[:, None, None].repeat(2, axis=1).repeat(2, axis=2), rho)

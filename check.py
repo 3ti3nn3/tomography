@@ -1,7 +1,24 @@
 import numpy as np
+import numpy.linalg as LA
+import general
 
 
-def purity(rhos: np.array, prec=1e-14):
+def state(rho: np.array, prec=1e-14):
+    '''
+    Checks whether a given state is actually a valid state.
+
+    :param rho : state in density representation
+    :param prec: precision of comparisons
+    :return: boolean
+    '''
+    bool_pos   = np.all(LA.eig(rho)[0]>=-prec)
+    bool_trace = np.abs(np.trace(rho)-1<prec)
+    bool_herm  = np.sum(np.abs(rho-general.H(rho)))<prec
+
+    return bool_pos and bool_trace and bool_herm
+
+
+def purity(rhos: np.array, prec=1e-15):
     '''
     Check purity of a given array of density matrix.
 
@@ -17,29 +34,26 @@ def purity(rhos: np.array, prec=1e-14):
         return True
     else:
         shadow = np.logical_or(np.all(np.abs(np.imag(purity)) >= prec), np.all(np.abs(purity-1) >= prec))
-        print('The follwing {0} states are not pure:\n'.format(np.sum(shadow)), rhos[shadow])
-        print('Purity:\n', purity[shadow])
         return False
 
 
-def povm(M: np.array):
+def povm(M: np.array, prec=1e-15):
     '''
     Checks a given set of matrices whether they are a POVM or not.
 
-    :param M: Nxdxd dimensional array where d is the dimension of the considered system
+    :param M   : Nxdxd dimensional array where d is the dimension of the considered system
+    :param prec: precision of comparisons
     :return: boolean wheter the criteria of a POVM are fulfilled by the given set
     '''
     # hermitian
-    MH = np.transpose(np.conjugate(M), axis1=-2, axis2=-1)
-    bool_herm = M == MH
+    bool_herm = M==general.H(M)
 
     # completeness
-    prec  = 1e-15
-    M_sum = np.sum(M, axis=0)
+    M_sum      = np.sum(M, axis=0)
     bool_compl = np.any(np.abs(np.real(M_sum) - np.eye(len(M[0]))) < prec) and np.any(np.imag(M_sum) < prec)
 
     # positivity
-    evalues, _ = np.linalg.eig(M)
-    bool_pos   = np.all(evalues >= 0)
+    w        = LA.eig(M)[0]
+    bool_pos = np.all(w >= -prec)
 
     return bool_herm and bool_compl and bool_pos
