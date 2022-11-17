@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.linalg as LA
 import qutip as qt
 import const
 import check
@@ -82,31 +83,18 @@ def bures_dist(rho_1: np.array, rho_2: np.array):
     return qt.bures_dist(Qrho_1, Qrho_2)
 
 
-def fidelity(rho_1: np.array, rho_2: np.array):
+def infidelity(rho_1: np.array, rho_2: np.array):
     '''
-    Calculates the fidelity of the given states according to qutip.
+    Calculates the fidelity of two given qubit state according to Wikipedia.
 
     :param rho_1: density representation of the first state
-    :param rho_2: density represnetation of the second state
-    :return: fidelity
+    :param rho_2: density representation of the second state
+    :retur: fidelity
     '''
-    Qrho_1 = qt.Qobj(rho_1)
-    Qrho_2 = qt.Qobj(rho_2)
-
-    return qt.fidelity(Qrho_1, Qrho_2)
+    return np.real(1 - np.trace(rho_1@rho_2) - 2*np.sqrt(LA.det(rho_1)*LA.det(rho_2)))
 
 
-def extract_angles(rho: np.array):
-    '''
-    Determines the orientation of a given state.
-
-    :param rho:
-    :return: phi, theta
-    '''
-    n = expect_xyz(rho)
-
-
-def realign_povm(M: np.array, phi: np.float, theta: np.float):
+def realign_povm(M: np.array, phi: np.float, theta: np.float, mirror=True):
     '''
     Rotates the set of POVM by the given angles.
 
@@ -115,9 +103,12 @@ def realign_povm(M: np.array, phi: np.float, theta: np.float):
     :param theta: angular angle
     :return: realigned POVM
     '''
-    R = const.Rz(np.array([phi]))@const.Ry(np.array([theta]))
-
-    return R@M@H(R)
+    if mirror:
+        R = const.Rz(np.array([-phi-np.pi]))@const.Ry(np.array([np.pi-theta]))
+        return R@M@H(R)
+    else:
+        R = const.Rz(np.array([-phi]))@const.Ry(np.array([theta]))
+        return R@M@H(R)
 
 
 def extract_param(rho: np.array):
@@ -135,3 +126,25 @@ def extract_param(rho: np.array):
     theta = np.arccos(n[2]/r)
 
     return r, phi, theta
+
+
+def purity(rhos: np.array, prec=1e-15):
+    '''
+    Computes purity of a given array of density matrix.
+
+    :param rhos: array of density matrices
+    :param prec: precision of the purity comparison
+    :return: purity
+    '''
+    return np.trace(rhos@rhos, axis1=-2, axis2=-1, dtype=complex)
+
+
+def state(rho: np.array, prec=1e-15):
+    '''
+    Computes whether a given state is actually a valid state.
+
+    :param rho : state in density representation
+    :param prec: precision of comparisons
+    :return: values
+    '''
+    return LA.eig(rho)[0], np.trace(rho), np.sum(np.abs(rho-H(rho)))
