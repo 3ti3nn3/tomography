@@ -1,8 +1,10 @@
 import numpy as np
+import numpy.linalg as LA
 import matplotlib.pyplot as plt
 import qutip as qt
 import pandas as pd
 from scipy.optimize import curve_fit
+from matplotlib import colors
 
 import general
 import const
@@ -12,6 +14,21 @@ import inversion
 import speed
 import pure
 import mixed
+import check
+
+d = {}
+d[pure.unitary_to_density]    = 'pure'
+d[mixed.sample_bures]         = 'mixed'
+d[mixed.sample_hilbert]       = 'mixed'
+d[mixed.hermitian_to_density] = 'mixed'
+d[mle.iterative]      = 'MLE'
+d[mle.two_step]       = 'two step MLE'
+d[inversion.linear]   = 'LI'
+d[inversion.two_step] = 'two step LI'
+d[general.euclidean_dist] = 'Euclidean distance'
+d[general.hilbert_dist]   = 'Hilbert Schmidt distance'
+d[general.infidelity]     = 'infidelity'
+
 
 def qubit(points=np.array([None]), vectors=np.array([None]), states=np.array([None]), kind='point', angles=[-60, 30]):
     '''
@@ -149,458 +166,163 @@ def expectation_distribution(rho, n_bins=10):
     plt.show()
 
 
-def hilbert_dist(rho_0: np.array, M: np.array, N_max: int, n_mean: int, iter=100, qubit=False):
+def eigenvalue_distribution(f_sample, N):
     '''
-    Plots the N dependency of the Hilbert-Schmidt distance.
+    Visualizes the eigenvalue distribution of a given array of states.
 
-    :param rho_0 : state to be reconstrected
-    :param N_max : maximal N
-    :param M     : set of POVMs
-    :param iter  : number of iteration needed for the maximum likelihood method
+    :param rho   : array of states in density represnetation
+    :param n_bins: number of bins
     :return:
     '''
-    dim      = rho_0.shape[0]
-    steps    = np.logspace(2, np.log10(N_max), 10, dtype=np.int64)
-    N_steps  = len(steps)
+    measure = {}
+    measure[mixed.sample_hilbert] = 'Hilbert-Schmidt measure'
+    measure[mixed.sample_bures]   = 'Bures measure'
 
-    rho_m1  = np.zeros((D_mean, N_steps, dim, dim), dtype=np.complex)
-    rho_m2  = np.zeros((D_mean, N_steps, dim, dim), dtype=np.complex)
-    hsd_m1  = np.zeros((D_mean, N_steps), dtype=np.float)
-    hsd_m2  = np.zeros((D_mean, N_steps), dtype=np.float)
+    distribution = {}
+    distribution[mixed.sample_hilbert] = lambda x: 12*(x-1/2)**2
+    distribution[mixed.sample_bures]   = lambda x: 8*(x-1/2)**2/(np.pi*np.sqrt(x*(1-x)))
 
-    for j in range(D_mean):
-        if np.all(M1==M2):
-            D  = simulate.measure(rho_0, N_max, M1)
-            D1 = D
-            D2 = D
-        else:
-            D1 = simulate.measure(rho_0, N_max, M1)
-            D2 = simulate.measure(rho_0, N_max, M2)
+    m = measure[f_sample]
+    P = distribution[f_sample]
 
-        # calculate data points for plots
-        for i in range(N_steps):
-            rho_m1[j,i] = func1[1](D1[:steps[i]], M1)
-            hsd_m1[j,i] = 1-general.fidelity(rho_0, rho_m1[j,i])
+    eig, _ = LA.eig(f_sample(2, N))
+    eig    = np.real(eig.flatten())
 
-            rho_m2[j,i] = func2[1](D2[:steps[i]], M2)
-            hsd_m2[j,i] = 1-general.fidelity(rho_0, rho_m2[j,i])
+    # plot simulation data
+    plt.figure(figsize=(12, 9))
+    plt.title(f'Eigenvalue distribution for sampling according to {m}')
+    plt.hist(eig, int(np.sqrt(N)), color='navy', density=True)
 
-    # plots
-    fig, axs = plt.subplots(1, 3, figsize=(30, 5))
+    # plot theoretical distribution
+    x = np.linspace(0, 1, 100)[1:-1]
+    plt.plot(x, P(x), label='expected distribution', color='violet')
 
-    fig.suptitle('N-scaling of Hilber-Schmidt distance')
-
-    axs[0].plot(steps, np.mean(hsd_mle, axis=0), c='blue')
-    axs[0].plot(steps, np.mean(hsd_inv, axis=0), c='violet')
-    axs[1].plot(steps, np.mean(hsd_mle, axis=0), c='blue')
-    axs[2].plot(steps, np.mean(hsd_inv, axis=0), c='violet')
-
-    axs[0].set_title('Comparison')
-    axs[1].set_title('Maximum likelihood estimate')
-    axs[2].set_title('Linear inversion')
-
-    axs[0].set_xlabel(r'$N$')
-    axs[1].set_xlabel(r'$N$')
-    axs[2].set_xlabel(r'$N$')
-
-    axs[0].set_xscale('log')
-    axs[1].set_xscale('log')
-    axs[2].set_xscale('log')
-
-    if np.all(inf_m1>0) and np.all(inf_m2>0):
-        axs[0].set_yscale('log')
-        axs[1].set_yscale('log')
-        axs[2].set_yscale('log')
-    elif np.all(inf_m1>0):
-        axs[1].set_yscale('log')
-    elif np.all(inf_m2>0):
-        axs[2].set_yscale('log')
-
-    axs[0].set_ylabel('Hilbert-Schmidt distance')
-
-    plt.show()
-
-    # show developmemt of the
-    if qubit:
-        qubit_3(('Original', rho_0), ('MLE', rho_mle), ('Inversion', rho_inv))
-
-
-def hilbert_dist_iter(rho_0: np.array, M:np.array, iter_max: int, D_mean: int, N=1000, qubit=False):
-    '''
-    Plots the iter dependency of the Hilbert-Schmidt distance.
-
-    :param rho_0   : state to be reconstructed
-    :param M       : set of POVMs
-    :param iter_max: maximal number of iterations
-    :param N       : number of measurments
-    :return:
-    '''
-    dim     = rho_0.shape[0]
-    steps   = np.linspace(1, iter_max, 50, dtype=np.int64)
-    N_steps = len(steps)
-
-    rho_mle  = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
-    hsd_mle  = np.empty((D_mean, N_steps), dtype=np.float)
-
-    # calculate data points for plots
-    for j in range(D_mean):
-        D  = simulate.measure(rho_0, N_max, M1)
-
-        for i in range(N_steps):
-            rho_mle[j,i] = mle.iterative(D, M, iter=steps[i])
-            hsd_mle[j,i] = general.hilbert_dist(rho_0, rho_mle[j,i])
-
-    # plots
-    plt.figure(figsize=(15, 9))
-
-    plt.title('Iteration-scaling of Hilber-Schmidt distance')
-
-    plt.plot(steps, np.mean(hsd_mle, axis=0), c='blue')
-    plt.xlim(1, iter_max)
-    plt.xlabel('iterations')
-    plt.ylabel('Hilbert-Schmidt distance')
-    plt.yscale('log')
-
-    plt.show()
-
-    # show developmemt of the
-    if qubit:
-        qubit_3(('Original', rho_0), ('MLE', rho_mle))
-
-
-def infidelity(rho_0: np.array, func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_max: int, D_mean: int, qubit=False):
-    '''
-    Plots the N dependency of infidelity.
-
-    :param rho_0 : state to be reconstrected
-    :param func1 : first function how to create a estimate
-        datatype: tuple (description: str, function)
-    :param func2 : second function how to create a estimate
-        datatype: tuple (description: str, function)
-    :param M1    : set of POVMs for func1
-    :param M2    : set of POVMs for func2
-    :param N_max : maximal size of measurement sample
-    :param D_mean: number of mean measurements for mean value
-    :param q     : boolean about whether the development should be plotted
-    :return:
-    '''
-    dim      = rho_0.shape[0]
-    steps    = np.logspace(2, np.log10(N_max), 10, dtype=np.int64)
-    N_steps  = len(steps)
-
-    rho_m1  = np.zeros((D_mean, N_steps, dim, dim), dtype=np.complex)
-    rho_m2  = np.zeros((D_mean, N_steps, dim, dim), dtype=np.complex)
-    inf_m1  = np.zeros((D_mean, N_steps), dtype=np.float)
-    inf_m2  = np.zeros((D_mean, N_steps), dtype=np.float)
-
-    for j in range(D_mean):
-        if np.all(M1==M2):
-            D  = simulate.measure(rho_0, N_max, M1)
-            D1 = D
-            D2 = D
-        else:
-            D1 = simulate.measure(rho_0, N_max, M1)
-            D2 = simulate.measure(rho_0, N_max, M2)
-
-        # calculate data points for plots
-        for i in range(N_steps):
-            rho_m1[j,i] = func1[1](D1[:steps[i]], M1)
-            inf_m1[j,i] = 1-general.fidelity(rho_0, rho_m1[j,i])
-
-            rho_m2[j,i] = func2[1](D2[:steps[i]], M2)
-            inf_m2[j,i] = 1-general.fidelity(rho_0, rho_m2[j,i])
-
-    # plots
-    fig, axs = plt.subplots(1, 3, figsize=(30, 5))
-
-    fig.suptitle('N-scaling of infidelity')
-
-    axs[0].plot(steps, np.mean(inf_m1, axis=0), c='blue', label=func1[0])
-    axs[0].plot(steps, np.mean(inf_m2, axis=0), c='violet', label=func2[0])
-    axs[1].plot(steps, np.mean(inf_m1, axis=0), c='blue')
-    axs[2].plot(steps, np.mean(inf_m2, axis=0), c='violet')
-
-    axs[0].set_title('Comparison')
-    axs[1].set_title(func1[0])
-    axs[2].set_title(func2[0])
-
-    axs[0].set_xlabel(r'$N$')
-    axs[1].set_xlabel(r'$N$')
-    axs[2].set_xlabel(r'$N$')
-
-    axs[0].set_xscale('log')
-    axs[1].set_xscale('log')
-    axs[2].set_xscale('log')
-
-    if np.all(inf_m1>0) and np.all(inf_m2>0):
-        axs[0].set_yscale('log')
-        axs[1].set_yscale('log')
-        axs[2].set_yscale('log')
-    elif np.all(inf_m1>0):
-        axs[1].set_yscale('log')
-    elif np.all(inf_m2>0):
-        axs[2].set_yscale('log')
-
-    axs[0].set_ylabel('infidelity')
-    axs[0].legend()
-
-    plt.show()
-
-    # show developmemt of the
-    if qubit:
-        qubit_3(('Original', rho_0), ('Method 2', rho_m1), ('Method 2', rho_m2))
-
-
-def infidelity_mean(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_max: int, D_mean: int):
-    '''
-    Calculates and plots the infidelity averaged over D_mean different rho_0.
-
-    :param func1 : first function how to create estimate
-        datatype: tuple (description: str, function)
-    :param func2 : second function how to create estimate
-        datatype: tuple (description: str, function)
-    :param M1    : set of POVMs for func1
-    :param M2    : set of POVMs for func2
-    :param N_max : maximum size of measurement sample
-    :param D_mean: number of different samples
-    :return:
-    '''
-    dim     = 2
-    steps   = np.logspace(0, np.log10(N_max), 50, dtype=np.int64)
-    N_steps = len(steps)
-    rho_0   = pure.unitary_to_density(dim, D_mean)
-
-    # initialize data storage
-    rho_m1 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
-    rho_m2 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
-    inf_m1 = np.empty((D_mean, N_steps), dtype=np.float)
-    inf_m2 = np.empty((D_mean, N_steps), dtype=np.float)
-
-    # creating data
-    for n in range(D_mean):
-        if np.all(M1==M2):
-            D  = simulate.measure(rho_0[n], N_max, M1)
-            D1 = D
-            D2 = D
-        else:
-            D1 = simulate.measure(rho_0[n], N_max, M1)
-            D2 = simulate.measure(rho_0[n], N_max, M2)
-
-        # calculate data points for plots
-        for i in range(N_steps):
-            rho_m1[n,i] = func1[1](D1[:steps[i]], M1)
-            inf_m1[n,i] = 1-general.fidelity(rho_0[n], rho_m1[n,i])
-
-            rho_m2[n,i] = func2[1](D2[:steps[i]], M2)
-            inf_m2[n,i] = 1-general.fidelity(rho_0[n], rho_m2[n,i])
-
-    inf_m1_mean = np.mean(inf_m1, axis=0)
-    inf_m2_mean = np.mean(inf_m2, axis=0)
-    inf_m1_std  = np.std(inf_m1, axis=0)
-    inf_m2_std  = np.std(inf_m2, axis=0)
-
-    # fit data
-    f = lambda x, a, A: A*x**a
-
-    threshold = 1e02
-    popt_m1, pcov_m1 = curve_fit(f, steps[steps>threshold], inf_m1_mean[steps>threshold], p0=[-0.65, 0.3], sigma=inf_m1_std[steps>threshold], method='trf')
-    popt_m2, pcov_m2 = curve_fit(f, steps[steps>threshold], inf_m2_mean[steps>threshold], p0=[-0.58, 0.2], sigma=inf_m2_std[steps>threshold], method='trf')
-
-    a0_m1, A0_m1 = popt_m1-np.sqrt(np.diag(pcov_m1))
-    a1_m1, A1_m1 = popt_m1+np.sqrt(np.diag(pcov_m1))
-
-    a0_m2, A0_m2 = popt_m2-np.sqrt(np.diag(pcov_m2))
-    a1_m2, A1_m2 = popt_m2+np.sqrt(np.diag(pcov_m2))
-
-    # plot
-    cont = np.logspace(0, np.log10(N_max), 100)
-
-    plt.figure(figsize=(15, 9))
-
-    plt.fill_between(cont, y1=f(cont, a0_m1, A0_m1), y2=f(cont, a1_m1, A1_m1), color='lightblue', alpha=0.3, label=r'$1\sigma$ environment of '+func1[0])
-    plt.fill_between(cont, y1=f(cont, a0_m2, A0_m2), y2=f(cont, a1_m2, A1_m2), color='lightgreen', alpha=0.3, label=r'$1\sigma$ environment of '+func2[0])
-
-    plt.plot(steps, inf_m1_mean, color='navy', linestyle='None', markersize=5, marker='o', label=func1[0])
-    plt.plot(steps, inf_m2_mean, color='forestgreen', linestyle='None', markersize=5, marker='o', label=func2[0])
-
-    plt.plot(cont, f(cont, *popt_m1), color='lightblue', label='Fit '+func1[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m1[0], np.sqrt(pcov_m1[0, 0])))
-    plt.plot(cont, f(cont, *popt_m2), color='lightgreen', label='Fit '+func2[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m2[0], np.sqrt(pcov_m2[0, 0])))
-
-    plt.title('N-scaling of mean infidelity averaged over {0} randomly picked pure states'.format(D_mean))
-    plt.xlabel(r'$N$')
-    plt.ylabel('mean infidelity')
+    plt.xlabel('eigenvalue')
+    plt.ylabel(r'$P$')
+    plt.xlim(0, 1)
     plt.legend()
+
+    plt.show()
+
+
+def plot_distance(self):
+    '''
+    Plots the N-dependency of the distance measure for the given simulation.
+    '''
+    # initialize plot
+    plt.figure(figsize=(12, 9))
+    plt.title(f'N-scaling of {d[self.f_distance]} averaged over {self.N_mean} {d[self.f_sample]} states')
+
+    # calculate mean
+    mean = np.mean(self.get_distances(), axis=0, where=self.get_valids())
+    std  = np.std(self.get_distances(), axis=0, where=self.get_valids())
+
+    plt.plot(self.x_N, mean, color='navy', linestyle='None', markersize=5, marker='o', label=f'{d[self.f_estimate]} with {self.povm_name}')
+
+    # fit curve
+    try:
+        f = lambda x, a, A: A*x**a
+
+        popt, pcov = curve_fit(f, self.x_N, mean, p0=[-0.5, 0.2], sigma=std)
+
+        param1 = popt-np.sqrt(np.diag(pcov))
+        param2 = popt+np.sqrt(np.diag(pcov))
+
+        x = np.logspace(2, np.log10(self.N_max), 100, dtype=np.int32)
+        plt.fill_between(x, y1=f(x, *param1), y2=f(x, *param2), color='lightblue', alpha=0.3)
+
+        plt.plot(x, f(x, *popt), color='lightblue', label=f'corresponding fit and $1\sigma$ with a = {popt[0]:.2e} $\pm$ {pcov[0,0]:.2e}')
+
+        self.logger.info('curve_fit successful!')
+        self.logger.info(f'\n'
+            'Fit parameters\n'\
+            '--------------\n'\
+            f'a = {popt[0]:.2e} +/- {np.sqrt(pcov[0,0]):.2e}\n'\
+            f'A = {popt[1]:.2e} +/- {np.sqrt(pcov[1,1]):.2e}')
+    except:
+         self.logger.info('curve_fit not successful!')
+
+    plt.xlabel(r'$N$')
+    plt.ylabel(f'{d[self.f_distance]}')
     plt.xscale('log')
     plt.yscale('log')
-    plt.xlim(10, N_max)
+    plt.xlim(self.x_N[0], self.x_N[-1])
 
-    plt.show()
-
-
-def euclidean_mean(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_max: int, D_mean: int):
-    '''
-    Calculates and plots the mean euclidean distance between the sample state and the estimator averaged
-    over D_mean randomly picked pure states.
-
-    :param func1 : first function how to create estimate
-        datatype: tuple (description: str, function)
-    :param func2 : second function how to create estimate
-        datatype: tuple (description: str, function)
-    :param M1    : set of POVMs for func1
-    :param M2    : set of POVMs for func2
-    :param N_max : maximum size of measurement sample
-    :param D_mean: number of different samples
-    :return:
-    '''
-    dim     = 2
-    steps   = np.logspace(0, np.log10(N_max), 100, dtype=np.int64)
-    N_steps = len(steps)
-    rho_0   = pure.unitary_to_density(dim, D_mean)
-
-    # initialize data storage
-    rho_m1 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
-    rho_m2 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
-    euc_m1 = np.empty((D_mean, N_steps), dtype=np.float)
-    euc_m2 = np.empty((D_mean, N_steps), dtype=np.float)
-
-    # creating data
-    for n in range(D_mean):
-        if np.all(M1==M2):
-            D  = simulate.measure(rho_0[n], N_max, M1)
-            D1 = D
-            D2 = D
-        else:
-            D1 = simulate.measure(rho_0[n], N_max, M1)
-            D2 = simulate.measure(rho_0[n], N_max, M2)
-
-        # calculate data points for plots
-        for i in range(N_steps):
-            rho_m1[n,i] = func1[1](D1[:steps[i]], M1)
-            euc_m1[n,i] = general.euclidean_dist(rho_0[n], rho_m1[n,i])
-
-            rho_m2[n,i] = func2[1](D2[:steps[i]], M2)
-            euc_m2[n,i] = general.euclidean_dist(rho_0[n], rho_m2[n,i])
-
-    euc_m1_mean = np.mean(euc_m1, axis=0)
-    euc_m2_mean = np.mean(euc_m2, axis=0)
-    euc_m1_std  = np.std(euc_m1, axis=0)
-    euc_m2_std  = np.std(euc_m2, axis=0)
-
-    # fit data
-    f = lambda x, a, A: A*x**a
-
-    threshold = 1e02
-    popt_m1, pcov_m1 = curve_fit(f, steps[steps>threshold], euc_m1_mean[steps>threshold], p0=[-0.65, 0.3], sigma=euc_m1_std[steps>threshold], method='trf')
-    popt_m2, pcov_m2 = curve_fit(f, steps[steps>threshold], euc_m2_mean[steps>threshold], p0=[-0.58, 0.2], sigma=euc_m2_std[steps>threshold], method='trf')
-
-    a0_m1, A0_m1 = popt_m1-np.sqrt(np.diag(pcov_m1))
-    a1_m1, A1_m1 = popt_m1+np.sqrt(np.diag(pcov_m1))
-
-    a0_m2, A0_m2 = popt_m2-np.sqrt(np.diag(pcov_m2))
-    a1_m2, A1_m2 = popt_m2+np.sqrt(np.diag(pcov_m2))
-
-    # plot
-    cont = np.logspace(0, np.log10(N_max), 100)
-
-    plt.figure(figsize=(15, 9))
-
-    plt.fill_between(cont, y1=f(cont, a0_m1, A0_m1), y2=f(cont, a1_m1, A1_m1), color='lightblue', alpha=0.3, label=r'$1\sigma$ environment of '+func1[0])
-    plt.fill_between(cont, y1=f(cont, a0_m2, A0_m2), y2=f(cont, a1_m2, A1_m2), color='lightgreen', alpha=0.3, label=r'$1\sigma$ environment of '+func2[0])
-
-    plt.plot(steps, euc_m1_mean, color='navy', linestyle='None', markersize=3, marker='o', label=func1[0])
-    plt.plot(steps, euc_m2_mean, color='forestgreen', linestyle='None', markersize=3, marker='o', label=func2[0])
-
-    plt.plot(cont, f(cont, *popt_m1), color='lightblue', label='Fit '+func1[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m1[0], np.sqrt(pcov_m1[0, 0])))
-    plt.plot(cont, f(cont, *popt_m2), color='lightgreen', label='Fit '+func2[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m2[0], np.sqrt(pcov_m2[0, 0])))
-
-    plt.title('N-scaling of mean euclidean distance averaged over {0} randomly picked pure states'.format(D_mean))
-    plt.xlabel(r'$N$')
-    plt.ylabel('mean euclidean distance')
     plt.legend()
+    plt.savefig('plots/dist_'+self.name+'.png', format='png', dpi=300)
+
+
+def compare_distance(self, criteria_1, criteria_2):
+    '''
+    Compares two Tomography schemes in one plot.
+
+    :param criteria_1: first criteria need to be consideread, same order as self.tomo_list
+    :param criteria_2: second criteria need to be considered, same order as self.tomt_list
+    '''
+    # initialize plot
+    plt.figure(figsize=(12, 9))
+    plt.title(f'N-scaling of {d[self.f_distance]} averaged over {self.N_mean} {d[self.f_sample]} states')
+
+    c = [['navy', 'lightblue'], ['forestgreen', 'lightgreen'], ['red', 'lightsalmon'], ['black', 'grey'], ['peru', 'sandybrown'], ['darkorange', 'bisque']]
+    for idx, tomo in enumerate(self.tomo_list):
+
+        # calculate mean
+        mean = np.mean(tomo.get_distances(), axis=0, where=tomo.get_valids())
+        std  = np.std(tomo.get_distances(), axis=0, where=tomo.get_valids())
+
+        plt.plot(tomo.x_N, mean, color=c[idx][0], linestyle='None', markersize=5, marker='o', label=f'{d[tomo.f_estimate]} with {criteria_1[idx]} and {criteria_2[idx]}')
+
+        # fit curve
+        try:
+            f = lambda x, a, A: A*x**a
+
+            popt, pcov = curve_fit(f, tomo.x_N, mean, p0=[-0.5, 0.2], sigma=std)
+
+            param1 = popt-np.sqrt(np.diag(pcov))
+            param2 = popt+np.sqrt(np.diag(pcov))
+
+            x = np.logspace(2, np.log10(tomo.N_max), 100, dtype=np.int32)
+            # plt.fill_between(x, y1=f(x, *param1), y2=f(x, *param2), color=c[idx][1], alpha=0.3)
+
+            plt.plot(x, f(x, *popt), color=c[idx][1], label=f'fit with a = {popt[0]:.2f} $\pm$ {np.sqrt(pcov[0,0]):.2f}, A = {popt[1]:.2f} $\pm$ {np.sqrt(pcov[1,1]):.2f}')
+
+            self.logger.info(f'curve_fit of {tomo.name} successful!')
+            self.logger.info(f'\n'
+                f'Fit parameters of {tomo.name}\n'\
+                '--------------\n'\
+                f'a = {popt[0]:.2f} +/- {np.sqrt(pcov[0,0]):.2f}\n'\
+                f'A = {popt[1]:.2f} +/- {np.sqrt(pcov[1,1]):.2f}')
+        except:
+             self.logger.info(f'curve_fit of {tomo.name} not successful!')
+
+    plt.xlabel(r'$N$')
+    plt.ylabel(f'{d[self.f_distance]}')
     plt.xscale('log')
     plt.yscale('log')
-    plt.xlim(10, N_max)
-
-    plt.show()
-
-
-def euclidean_mean_adaptive(func1: tuple, func2: tuple, M1: np.array, M2: np.array, N_max: int, D_mean: int):
-    '''
-    Calculates and plots the mean euclidean distance between the sample state and the estimator averaged
-    over D_mean randomly picked pure states.
-
-    :param func1 : first function how to create estimate
-        datatype: tuple (description: str, function)
-    :param func2 : second function how to create estimate
-        datatype: tuple (description: str, function)
-    :param M1    : set of POVMs for func1
-    :param M2    : set of POVMs for func2
-    :param N_max : maximum size of measurement sample
-    :param D_mean: number of different samples
-    :return:
-    '''
-    dim     = 2
-    steps   = np.logspace(0, np.log10(N_max), 100, dtype=np.int64)
-    N_steps = len(steps)
-    rho_0   = pure.unitary_to_density(dim, D_mean)
-
-    # initialize data storage
-    rho_m1 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
-    rho_m2 = np.empty((D_mean, N_steps, dim, dim), dtype=np.complex)
-    euc_m1 = np.empty((D_mean, N_steps), dtype=np.float)
-    euc_m2 = np.empty((D_mean, N_steps), dtype=np.float)
-
-    # creating data
-    for n in range(D_mean):
-        # calculate data points for plots
-        for i in range(N_steps):
-            rho_m1[n,i] = func1[1](rho_0[n], M1, steps[i])
-            euc_m1[n,i] = general.euclidean_dist(rho_0[n], rho_m1[n,i])
-
-            rho_m2[n,i] = func2[1](rho_0[n], M1, steps[i])
-            euc_m2[n,i] = general.euclidean_dist(rho_0[n], rho_m2[n,i])
-
-    euc_m1_mean = np.mean(euc_m1, axis=0)
-    euc_m2_mean = np.mean(euc_m2, axis=0)
-    euc_m1_std  = np.std(euc_m1, axis=0)
-    euc_m2_std  = np.std(euc_m2, axis=0)
-
-    # fit data
-    f = lambda x, a, A: A*x**a
-
-    threshold = 1e02
-    popt_m1, pcov_m1 = curve_fit(f, steps[steps>threshold], euc_m1_mean[steps>threshold], p0=[-0.5, 0.3], sigma=euc_m1_std[steps>threshold])
-    popt_m2, pcov_m2 = curve_fit(f, steps[steps>threshold], euc_m2_mean[steps>threshold], p0=[-0.5, 0.3], sigma=euc_m2_std[steps>threshold])
-
-    a0_m1, A0_m1 = popt_m1-np.sqrt(np.diag(pcov_m1))
-    a1_m1, A1_m1 = popt_m1+np.sqrt(np.diag(pcov_m1))
-
-    a0_m2, A0_m2 = popt_m2-np.sqrt(np.diag(pcov_m2))
-    a1_m2, A1_m2 = popt_m2+np.sqrt(np.diag(pcov_m2))
-
-    # plot
-    cont = np.logspace(0, np.log10(N_max), 100)
-
-    plt.figure(figsize=(15, 9))
-
-    plt.fill_between(cont, y1=f(cont, a0_m1, A0_m1), y2=f(cont, a1_m1, A1_m1), color='lightblue', alpha=0.3, label=r'$1\sigma$ environment of '+func1[0])
-    plt.fill_between(cont, y1=f(cont, a0_m2, A0_m2), y2=f(cont, a1_m2, A1_m2), color='lightgreen', alpha=0.3, label=r'$1\sigma$ environment of '+func2[0])
-
-    plt.plot(steps, euc_m1_mean, color='navy', linestyle='None', markersize=3, marker='o', label=func1[0])
-    plt.plot(steps, euc_m2_mean, color='forestgreen', linestyle='None', markersize=3, marker='o', label=func2[0])
-
-    plt.plot(cont, f(cont, *popt_m1), color='lightblue', label='Fit '+func1[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m1[0], np.sqrt(pcov_m1[0, 0])))
-    plt.plot(cont, f(cont, *popt_m2), color='lightgreen', label='Fit '+func2[0]+r', a = {0:.2e} $\pm$ {1:.2e}'.format(popt_m2[0], np.sqrt(pcov_m2[0, 0])))
-
-    plt.title('N-scaling of mean euclidean distance averaged over {0} randomly picked pure states'.format(D_mean))
-    plt.xlabel(r'$N$')
-    plt.ylabel('mean euclidean distance')
+    plt.xlim((1e02, self.N_max))
     plt.legend()
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlim(10, N_max)
 
-    plt.show()
+    plt.savefig('plots/comp_'+self.name+'.png', format='png', dpi=300)
+
+
+def plot_validity(self):
+    '''
+    Plots the distribution of invalid states.
+    '''
+    plt.figure(figsize=(12, 9))
+    plt.title(f'Invalidity distribution of estimates')
+
+    height = np.sum(np.logical_not(self._valids), axis=0)
+    plt.imshow(self._valids, cmap=colors.ListedColormap(['red', 'green']), alpha=0.4, aspect='auto')
+    plt.plot(np.arange(0, self.N_ticks), height, marker='o', markersize=5, color='red', label='number of invalids')
+
+    plt.ylabel(r'index $N_{mean}$ axis/ total numbe of invalids')
+    plt.xlabel(r'index $N_{ticks}$ axis')
+    plt.xlim((-0.5, self.N_ticks-0.5))
+    plt.ylim((-0.5, self.N_mean-0.5))
+    plt.legend()
+
+    plt.savefig('plots/val_'+self.name+'.png', format='png', dpi=300)
 
 
 def speed_comparison(title, iterations=10, **kwargs):
