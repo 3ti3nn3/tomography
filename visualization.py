@@ -228,7 +228,7 @@ def plot_distance(self):
         param1 = popt-np.sqrt(np.diag(pcov))
         param2 = popt+np.sqrt(np.diag(pcov))
 
-        x = np.logspace(2, np.log10(self.N_max), 100, dtype=np.int32)
+        x = np.logspace(np.log10(self.N[0]), np.log10(self.N[1]), 100, dtype=np.int32)
         plt.fill_between(x, y1=f(x, *param1), y2=f(x, *param2), color='lightblue', alpha=0.3)
 
         plt.plot(x, f(x, *popt), color='lightblue', label=f'corresponding fit and $1\sigma$ with a = {popt[0]:.2e} $\pm$ {pcov[0,0]:.2e}')
@@ -281,7 +281,7 @@ def compare_distance(self, criteria_1, criteria_2):
             param1 = popt-np.sqrt(np.diag(pcov))
             param2 = popt+np.sqrt(np.diag(pcov))
 
-            x = np.logspace(2, np.log10(tomo.N_max), 100, dtype=np.int32)
+            x = np.logspace(np.log10(tomo.N[0]), np.log10(tomo.N[1]), 100, dtype=np.int32)
             # plt.fill_between(x, y1=f(x, *param1), y2=f(x, *param2), color=c[idx][1], alpha=0.3)
 
             plt.plot(x, f(x, *popt), color=c[idx][1], label=f'fit with a = {popt[0]:.2f} $\pm$ {np.sqrt(pcov[0,0]):.2f}, A = {popt[1]:.2f} $\pm$ {np.sqrt(pcov[1,1]):.2f}')
@@ -299,10 +299,35 @@ def compare_distance(self, criteria_1, criteria_2):
     plt.ylabel(f'{d[self.f_distance]}')
     plt.xscale('log')
     plt.yscale('log')
-    plt.xlim((1e02, self.N_max))
+    plt.xlim((self.N[0], self.N[1]))
     plt.legend()
 
     plt.savefig('plots/comp_'+self.name+'.png', format='png', dpi=300)
+
+
+def plot_alpha_dependency(self):
+    '''
+    Plots the alpha dependency of the scaling.
+    '''
+    fig, ax1 = plt.subplots(figsize=(12,9))
+    fig.suptitle(r'$\alpha$-dependency of fit parameters')
+    ax2 = ax1.twinx()
+
+    ax1.set_xlabel(r'$\alpha$')
+    ax1.set_xlim(np.min(self.x_alpha), np.max(self.x_alpha))
+
+    leg1, = ax1.plot(self.x_alpha, self._a, marker='o', markersize=5, linestyle=None, color='navy', label=r'$a$')
+    ax1.fill_between(self.x_alpha, y1=self._a-self._a_err, y2=self._a+self._a_err, color='lightblue', alpha=0.3)
+    ax1.hlines(-1, np.min(self.x_alpha), np.max(self.x_alpha), color='grey', linewidth=0.5)
+    ax1.set_ylabel(r'exponent $a$')
+
+    leg2, = ax2.plot(self.x_alpha, self._A, marker='o', markersize=5, linestyle=None, color='forestgreen', label=r'$A$')
+    ax2.fill_between(self.x_alpha, y1=self._A-self._A_err, y2=self._A+self._A_err, color='lightgreen', alpha=0.3)
+    ax2.set_ylabel(r'prefactor $A$')
+
+    plt.legend(handles=[leg1, leg2])
+
+    plt.savefig('plots/alpha_'+self.name+'.png', format='png',dpi=300)
 
 
 def plot_validity(self):
@@ -314,11 +339,11 @@ def plot_validity(self):
 
     height = np.sum(np.logical_not(self._valids), axis=0)
     plt.imshow(self._valids, cmap=colors.ListedColormap(['red', 'green']), alpha=0.4, aspect='auto')
-    plt.plot(np.arange(0, self.N_ticks), height, marker='o', markersize=5, color='red', label='number of invalids')
+    plt.plot(np.arange(0, self.N[2]), height, marker='o', markersize=5, color='red', label='number of invalids')
 
     plt.ylabel(r'index $N_{mean}$ axis/ total numbe of invalids')
     plt.xlabel(r'index $N_{ticks}$ axis')
-    plt.xlim((-0.5, self.N_ticks-0.5))
+    plt.xlim((-0.5, self.N[2]-0.5))
     plt.ylim((-0.5, self.N_mean-0.5))
     plt.legend()
 
