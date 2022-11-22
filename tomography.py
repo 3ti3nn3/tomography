@@ -15,9 +15,8 @@ class Tomography:
     debug = False
 
     dim     = None
-    N_max   = None
+    N       = None
     N_mean  = None
-    N_ticks = None
     x_N     = None
 
     f_sample   = None
@@ -87,7 +86,7 @@ class Comparison:
     new   = True
     debug = False
 
-    N_max  = None
+    N      = None
     N_mean = None
 
     f_sample   = None
