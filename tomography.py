@@ -6,32 +6,45 @@ import const
 import check
 import simulate
 import visualization
+import shutil
 
 
 class Tomography:
 
-    name  = 'base'
-    new   = True
-    debug = False
+    '''
+    self.name  = 'base'
+    self.path  = None
+    self.new   = True
+    self.debug = False
 
-    dim     = None
-    N       = None
-    N_mean  = None
-    x_N     = None
+    self.d = {}
+    self.d['dim']       = None
+    self.d['N_min']     = None
+    self.d['N_max']     = None
+    self.d['N_ticks']   = None
+    self.d['N_mean']    = None
+    self.d['povm_name'] = None
+    self.d['f_sample']   = None
+    self.d['f_estimate'] = None
+    self.d['f_distance'] = None
 
-    f_sample   = None
-    f_estimate = None
-    f_distance = None
+    self.povm = None
+    self.x_N  = None
 
-    _originals = None
-    _esimates  = None
-    _valids    = None
-    _distances = None
+    self._originals = None
+    self._esimates  = None
+    self._valids    = None
+    self._distances = None
 
+    self._a     = None
+    self._a_err = None
+    self._A     = None
+    self._A_err = None
+    '''
 
     def setup_logging(self, logger_name):
         self.logger = logging.getLogger(logger_name)
-        handler     = logging.FileHandler('logs/'+self.name+'.log', mode='w')
+        handler     = logging.FileHandler(self.path+'logs/'+self.name+'.log', mode='w')
         formatter   = logging.Formatter('%(asctime)s [%(name)s] %(levelname)s: %(message)s')
 
         if self.debug:
@@ -45,7 +58,15 @@ class Tomography:
         self.logger.info('Tomography logger initialized.')
 
     def parameter_report(self):
-        pass
+        info = '\n'+f"Parameter report of {self.name}\n"+'------------------------------\n'
+        for key in self.d:
+            info += '{0:15}:{1}\n'.format(key, self.d[key])
+        self.logger.info(info)
+        return info
+
+    def update_param(self, key, value):
+        self.logger.info(f"Updating {key} parameter from {self.d[key]} to {value}.")
+        self.d[key] = value
 
     def get_originals(self):
         return self._originals
@@ -59,47 +80,74 @@ class Tomography:
     def get_valids(self):
         return self._valids
 
+    def get_scaling(self):
+        return self._a, self._A, self._a_err, self._A_err
+
     def plot_validity(self):
         visualization.plot_validity(self)
 
     def create_originals(self):
         self.logger.info('New set of original states will be created.')
-        assert self._originals is None, f'Want to create new set of samples even though a set already exists.'
+        assert self._originals is None, f"Want to create new set of samples even though a set already exists."
 
-        self._originals = self.f_sample(self.dim, self.N_mean)
+        self._originals = self.d['f_sample'](self.d['dim'], self.d['N_mean'])
 
     def reconstruct(self):
+        pass
+
+    def extract_fitparam(self):
+        pass
+
+    def calculate_scaling(self):
         pass
 
     def plot_distance(self):
         visualization.plot_distance(self)
 
-    def dispatch_model(self):
-        with open('data/'+self.name+'.pt', "wb") as file:
+    def dispatch_model(self, path=''):
+        with open(self.path+'data/'+self.name+'.pt', "wb") as file:
             pickle.dump(self, file)
         self.logger.info('Dispatched model successfully.')
+
+        if path!='':
+            shutil.move(self.path+'logs/'+self.name+'.log', path+'logs/'+self.name+'.log')
+            shutil.move(self.path+'data/'+self.name+'.pt', path+'data/'+self.name+'.pt')
+            try:
+                shutil.move(self.path+'plots/val_'+self.name+'.png', path+'plots/val_'+self.name+'.png')
+            except:
+                pass
+            try:
+                shutil.move(self.path+'plots/dist_'+self.name+'.png', path+'plots/dist_'+self.name+'.png')
+            except:
+                pass
+            try:
+                shutil.move(self.path+'plots/alpha_'+self.name+'.png', path+'plots/alpha_'+self.name+'.png')
+            except:
+                pass
+
 
 
 class Comparison:
 
-    name  = 'base'
-    new   = True
-    debug = False
+    '''
+    self.name  = 'base'
+    self.path  = None
+    self.new   = True
+    self.debug = False
 
-    N      = None
-    N_mean = None
+    self.d = {}
+    self.d['dim']    = None
+    self.d['N_max']  = None
+    self.d['N_mean'] = None
+    self.d['f_sample']   = None
+    self.d['f_distance'] = None
 
-    f_sample   = None
-    f_distance = None
-
-    tomo_list = []
-
-    def __init__(self):
-        pass
+    self._list = None
+    '''
 
     def setup_logging(self, logger_name):
         self.logger = logging.getLogger(logger_name)
-        handler     = logging.FileHandler('logs/'+self.name+'.log', mode='w')
+        handler     = logging.FileHandler(self.path+'logs/'+self.name+'.log', mode='w')
         formatter   = logging.Formatter('%(asctime)s [%(name)s] %(levelname)s: %(message)s')
 
         if self.debug:
@@ -110,22 +158,37 @@ class Comparison:
         handler.setLevel(logging.DEBUG)
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
-        self.logger.info('Tomography logger initialized.')
+        self.logger.info('Comparison logger initialized.')
 
-
-    def get_dim(self):
-        return [tomo.dim for tomo in self.tomo_list]
+    def parameter_report(self):
+        info = '\n'+'Parameter report\n'+'----------------\n'
+        for key in self.d:
+            info += '{0:15}:{1}\n'.format(key, self.d[key])
+        self.logger.info(info)
+        return info
 
     def get_estimation_method(self):
-        return [tomo.f_estimate for tomo in self.tomo_list]
+        return [tomo.d['f_estimate'] for tomo in self._list]
 
     def get_povm_name(self):
-        return [tomo.povm_name for tomo in self.tomo_list]
+        return [tomo.d['povm_name'] for tomo in self._list]
+
+    def get_N_min(self):
+        return [tomo.d['N_min'] for tomo in self._list]
 
     def compare_distance(self, criteria_1, criteria_2):
         visualization.compare_distance(self, criteria_1, criteria_2)
 
-    def dispatch_model(self):
-        with open('data/'+self.name+'.pt', "wb") as file:
+
+    def dispatch_model(self, path=''):
+        with open(self.path+'data/'+self.name+'.pt', "wb") as file:
             pickle.dump(self, file)
         self.logger.info('Dispatched model successfully.')
+
+        if path!='':
+            shutil.move(self.path+'logs/'+self.name+'.log', path+'logs/'+self.name+'.log')
+            shutil.move(self.path+'data/'+self.name+'.log', path+'data/'+self.name+'.log')
+            try:
+                shutil.move(self.path+'plots/comp_'+self.name+'.png', path+'data/comp_'+self.name+'.png')
+            except:
+                pass

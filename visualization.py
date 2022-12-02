@@ -16,18 +16,25 @@ import pure
 import mixed
 import check
 
-d = {}
-d[pure.unitary_to_density]    = 'pure'
-d[mixed.sample_bures]         = 'mixed'
-d[mixed.sample_hilbert]       = 'mixed'
-d[mixed.hermitian_to_density] = 'mixed'
-d[mle.iterative]      = 'MLE'
-d[mle.two_step]       = 'two step MLE'
-d[inversion.linear]   = 'LI'
-d[inversion.two_step] = 'two step LI'
-d[general.euclidean_dist] = 'Euclidean distance'
-d[general.hilbert_dist]   = 'Hilbert Schmidt distance'
-d[general.infidelity]     = 'infidelity'
+# name dictionary for functions
+w = {}
+
+# f_sample
+w[pure.unitary_to_density]    = 'pure'
+w[mixed.sample_bures]         = 'mixed'
+w[mixed.sample_hilbert]       = 'mixed'
+w[mixed.hermitian_to_density] = 'mixed'
+
+# f_estimate
+w[mle.iterative]      = 'MLE'
+w[mle.two_step]       = 'two step MLE'
+w[inversion.linear]   = 'LI'
+w[inversion.two_step] = 'two step LI'
+
+# f_distance
+w[general.euclidean_dist] = 'Euclidean distance'
+w[general.hilbert_dist]   = 'Hilbert Schmidt distance'
+w[general.infidelity]     = 'infidelity'
 
 
 def qubit(points=np.array([None]), vectors=np.array([None]), states=np.array([None]), kind='point', angles=[-60, 30]):
@@ -190,7 +197,7 @@ def eigenvalue_distribution(f_sample, N):
 
     # plot simulation data
     plt.figure(figsize=(12, 9))
-    plt.title(f'Eigenvalue distribution for sampling according to {m}')
+    plt.title(f"Eigenvalue distribution for sampling according to {m}")
     plt.hist(eig, int(np.sqrt(N)), color='navy', density=True)
 
     # plot theoretical distribution
@@ -209,100 +216,135 @@ def plot_distance(self):
     '''
     Plots the N-dependency of the distance measure for the given simulation.
     '''
+    idx_N0 = np.argmax(self.x_N>self.d['N0'])
+
     # initialize plot
     plt.figure(figsize=(12, 9))
-    plt.title(f'N-scaling of {d[self.f_distance]} averaged over {self.N_mean} {d[self.f_sample]} states')
+    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.d['f_sample']]} states")
 
     # calculate mean
     mean = np.mean(self.get_distances(), axis=0, where=self.get_valids())
     std  = np.std(self.get_distances(), axis=0, where=self.get_valids())
 
-    plt.plot(self.x_N, mean, color='navy', linestyle='None', markersize=5, marker='o', label=f'{d[self.f_estimate]} with {self.povm_name}')
+    # plot both steps
+    plt.plot(self.x_N[:idx_N0], mean[:idx_N0], color='navy', linestyle='None', markersize=5, marker='o', label=f"frist step {w[self.d['f_estimate']]} with {self.d['povm_name']}")
+    plt.plot(self.x_N[idx_N0:], mean[idx_N0:], color='forestgreen', linestyle='None', markersize=5, marker='o', label=f"second step {w[self.d['f_estimate']]} with {self.d['povm_name']}")
+    plt.axvline(self.d['N0'], color='grey', linewidth=0.5, label='two-step threshold')
 
-    # fit curve
-    try:
-        f = lambda x, a, A: A*x**a
+    # plot fit parameters
+    if self.d['cup']:
+        try:
+            # plot fitted curves
+            f, [a, A], [a_err, A_err] = self.extract_fitparam()
 
-        popt, pcov = curve_fit(f, self.x_N, mean, p0=[-0.5, 0.2], sigma=std)
+            x  = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), 100, dtype=np.int32)
+            x0 = x[x<=self.d['N0']]
+            x1 = x[x>self.d['N0']]
 
-        param1 = popt-np.sqrt(np.diag(pcov))
-        param2 = popt+np.sqrt(np.diag(pcov))
+            plt.fill_between(x0, y1=f(x0, a[0]-a_err[0], A[0]-A_err[0]), y2=f(x0, a[0]+a_err[0], A[0]+A_err[0]), color='lightblue', alpha=0.3)
+            plt.fill_between(x1, y1=f(x1, a[1]-a_err[1], A[1]-A_err[1]), y2=f(x1, a[1]+a_err[1], A[1]+A_err[1]), color='lightgreen', alpha=0.3)
+            plt.plot(x, f(x, a[0], A[0]), color='lightblue', label=f"scaling first step: a = {a[0]:.2e} $\pm$ {a_err[0]:.2e}")
+            plt.plot(x, f(x, a[1], A[1]), color='lightgreen', label=f"scaling second step: a = {a[1]:.2e} $\pm$ {a_err[1]:.2e}")
 
-        x = np.logspace(np.log10(self.N[0]), np.log10(self.N[1]), 100, dtype=np.int32)
-        plt.fill_between(x, y1=f(x, *param1), y2=f(x, *param2), color='lightblue', alpha=0.3)
+            # fit and plot overall curve
+            a_avg, A_avg, a_avg_err, A_avg_err = self.get_scaling()
 
-        plt.plot(x, f(x, *popt), color='lightblue', label=f'corresponding fit and $1\sigma$ with a = {popt[0]:.2e} $\pm$ {pcov[0,0]:.2e}')
+            plt.plot(x, f(x, a_avg, A_avg), color='red', linewidth=0.5, label=f"overall scaling: a {a_avg:.2e} $\pm$ {a_avg_err:.2e}")
 
-        self.logger.info('curve_fit successful!')
-        self.logger.info(f'\n'
-            'Fit parameters\n'\
-            '--------------\n'\
-            f'a = {popt[0]:.2e} +/- {np.sqrt(pcov[0,0]):.2e}\n'\
-            f'A = {popt[1]:.2e} +/- {np.sqrt(pcov[1,1]):.2e}')
-    except:
-         self.logger.info('curve_fit not successful!')
+            # logger information
+            self.logger.info(f"Plotting fit was successful!")
+        except Exception as e:
+            # logger information
+            self.logger.info(f"Plotting fit wasn't successful!")
+            self.logger.debug('The following error occurred in plot_distance: '+str(e))
+    else:
+        try:
+            # plot shifted results
+            plt.plot(self.x_N[idx_N0:]-self.d['N0'], mean[idx_N0:], color='darkorange', linestyle='None', markersize=5, marker='o', label=f"shifted second step {w[self.d['f_estimate']]} with {self.d['povm_name']}")
+
+            # plot fitted curves
+            f, [a, A], [a_err, A_err] = self.extract_fitparam()
+
+            x  = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), 100, dtype=np.int32)
+            x0 = x[x<=self.d['N0']]
+            x1 = x[x>self.d['N0']]
+
+            plt.fill_between(x0, y1=f(x0, a[0]-a_err[0], A[0]-A_err[0]), y2=f(x0, a[0]+a_err[0], A[0]+A_err[0]), color='lightblue', alpha=0.3)
+            plt.fill_between(x, y1=f(x, a[1]-a_err[1], A[1]-A_err[1]), y2=f(x, a[1]+a_err[1], A[1]+A_err[1]), color='bisque', alpha=0.3)
+            plt.plot(x, f(x, a[0], A[0]), color='lightblue', label=f"scaling first step: a = {a[0]:.2e} $\pm$ {a_err[0]:.2e}")
+            plt.plot(x, f(x, a[1], A[1]), color='bisque', label=f"scaling shifted second step: a = {a[1]:.2e} $\pm$ {a_err[1]:.2e}")
+
+            # fit and plot overall curve
+            a_avg, A_avg, a_avg_err, A_avg_err = self.get_scaling()
+
+            plt.plot(x, f(x, a_avg, A_avg), color='red', linewidth=0.5, label=f"overall scaling: a {a_avg:.2e} $\pm$ {a_avg_err:.2e}")
+
+            # logger information
+            self.logger.info(f"Plotting fit was successful!")
+        except Exception as e:
+            # logger information
+            self.logger.info(f"Plotting fit wasn't successful!")
+            self.logger.debug('The following error occurred in plot_distance: '+str(e))
 
     plt.xlabel(r'$N$')
-    plt.ylabel(f'{d[self.f_distance]}')
+    plt.ylabel(f"{w[self.d['f_distance']]}")
     plt.xscale('log')
     plt.yscale('log')
     plt.xlim(self.x_N[0], self.x_N[-1])
-
     plt.legend()
-    plt.savefig('plots/dist_'+self.name+'.png', format='png', dpi=300)
+
+    plt.savefig(self.path+'plots/dist_'+self.name+'.png', format='png', dpi=300)
 
 
 def compare_distance(self, criteria_1, criteria_2):
     '''
-    Compares two Tomography schemes in one plot.
+    Compares up to four different Tomography schemes based on up to two criteria in one plot.
 
     :param criteria_1: first criteria need to be consideread, same order as self.tomo_list
-    :param criteria_2: second criteria need to be considered, same order as self.tomt_list
+    :param criteria_2: second criteria need to be considered, same order as self.tomo_list
     '''
     # initialize plot
     plt.figure(figsize=(12, 9))
-    plt.title(f'N-scaling of {d[self.f_distance]} averaged over {self.N_mean} {d[self.f_sample]} states')
+    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.d['f_sample']]} states")
 
     c = [['navy', 'lightblue'], ['forestgreen', 'lightgreen'], ['red', 'lightsalmon'], ['black', 'grey'], ['peru', 'sandybrown'], ['darkorange', 'bisque']]
-    for idx, tomo in enumerate(self.tomo_list):
+    for idx, tomo in enumerate(self._list):
+
+        # determine index
+        idx_N0 = np.argmax(tomo.x_N>tomo.d['N0'])
 
         # calculate mean
         mean = np.mean(tomo.get_distances(), axis=0, where=tomo.get_valids())
         std  = np.std(tomo.get_distances(), axis=0, where=tomo.get_valids())
 
-        plt.plot(tomo.x_N, mean, color=c[idx][0], linestyle='None', markersize=5, marker='o', label=f'{d[tomo.f_estimate]} with {criteria_1[idx]} and {criteria_2[idx]}')
+        # plot both steps
+        plt.plot(tomo.x_N, mean, color=c[idx][0], linestyle='None', markersize=5, marker='o', label=fr"{w[tomo.d['f_estimate']]} with {criteria_1[idx]} and {criteria_2[idx]}")
+        plt.axvline(tomo.d['N0'], color=c[idx][1], linewidth=0.5)
 
-        # fit curve
         try:
+            # fit and plot overall curve
             f = lambda x, a, A: A*x**a
+            a_avg, A_avg, a_avg_err, A_avg_err = tomo.get_scaling()
 
-            popt, pcov = curve_fit(f, tomo.x_N, mean, p0=[-0.5, 0.2], sigma=std)
+            x  = np.logspace(np.log10(tomo.d['N_min']), np.log10(tomo.d['N_max']), 100, dtype=np.int32)
+            plt.plot(x, f(x, a_avg, A_avg), color=c[idx][1], linewidth=1, label=f"overall scaling: a {a_avg:.2e} $\pm$ {a_avg_err:.2e}")
 
-            param1 = popt-np.sqrt(np.diag(pcov))
-            param2 = popt+np.sqrt(np.diag(pcov))
+            # logger information
+            self.logger.info(f"Plotting fit was successful!")
+        except Exception as e:
+            # logger information
+            self.logger.info(f"Plotting fit wasn't successful!")
+            self.logger.debug('The following error occurred in compare_distance: '+str(e))
 
-            x = np.logspace(np.log10(tomo.N[0]), np.log10(tomo.N[1]), 100, dtype=np.int32)
-            # plt.fill_between(x, y1=f(x, *param1), y2=f(x, *param2), color=c[idx][1], alpha=0.3)
-
-            plt.plot(x, f(x, *popt), color=c[idx][1], label=f'fit with a = {popt[0]:.2f} $\pm$ {np.sqrt(pcov[0,0]):.2f}, A = {popt[1]:.2f} $\pm$ {np.sqrt(pcov[1,1]):.2f}')
-
-            self.logger.info(f'curve_fit of {tomo.name} successful!')
-            self.logger.info(f'\n'
-                f'Fit parameters of {tomo.name}\n'\
-                '--------------\n'\
-                f'a = {popt[0]:.2f} +/- {np.sqrt(pcov[0,0]):.2f}\n'\
-                f'A = {popt[1]:.2f} +/- {np.sqrt(pcov[1,1]):.2f}')
-        except:
-             self.logger.info(f'curve_fit of {tomo.name} not successful!')
 
     plt.xlabel(r'$N$')
-    plt.ylabel(f'{d[self.f_distance]}')
+    plt.ylabel(f"{w[self.d['f_distance']]}")
     plt.xscale('log')
     plt.yscale('log')
-    plt.xlim((self.N[0], self.N[1]))
+    plt.xlim((np.min(self.get_N_min()), self.d['N_max']))
     plt.legend()
 
-    plt.savefig('plots/comp_'+self.name+'.png', format='png', dpi=300)
+    plt.savefig(self.path+'plots/comp_'+self.name+'.png', format='png', dpi=300)
 
 
 def plot_alpha_dependency(self):
@@ -327,7 +369,7 @@ def plot_alpha_dependency(self):
 
     plt.legend(handles=[leg1, leg2])
 
-    plt.savefig('plots/alpha_'+self.name+'.png', format='png',dpi=300)
+    plt.savefig(self.path+'plots/alpha_'+self.name+'.png', format='png',dpi=300)
 
 
 def plot_validity(self):
@@ -335,19 +377,19 @@ def plot_validity(self):
     Plots the distribution of invalid states.
     '''
     plt.figure(figsize=(12, 9))
-    plt.title(f'Invalidity distribution of estimates')
+    plt.title(f"Invalidity distribution of estimates")
 
     height = np.sum(np.logical_not(self._valids), axis=0)
     plt.imshow(self._valids, cmap=colors.ListedColormap(['red', 'green']), alpha=0.4, aspect='auto')
-    plt.plot(np.arange(0, self.N[2]), height, marker='o', markersize=5, color='red', label='number of invalids')
+    plt.plot(np.arange(0, self.d['N_ticks']), height, marker='o', markersize=5, color='red', label='number of invalids')
 
     plt.ylabel(r'index $N_{mean}$ axis/ total numbe of invalids')
     plt.xlabel(r'index $N_{ticks}$ axis')
-    plt.xlim((-0.5, self.N[2]-0.5))
-    plt.ylim((-0.5, self.N_mean-0.5))
+    plt.xlim((-0.5, self.d['N_ticks']-0.5))
+    plt.ylim((-0.5, self.d['N_mean']-0.5))
     plt.legend()
 
-    plt.savefig('plots/val_'+self.name+'.png', format='png', dpi=300)
+    plt.savefig(self.path+'plots/val_'+self.name+'.png', format='png', dpi=300)
 
 
 def speed_comparison(title, iterations=10, **kwargs):
