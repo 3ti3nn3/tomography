@@ -47,6 +47,7 @@ povm['SIC-POVM'] = sic
 # Pauli string POVM
 string1d = np.array([se/2, sx/2, sy/2, sz/2])
 
+
 # rotation matrices
 def Rx(alpha):
     return np.transpose([[np.cos(alpha/2), -1j*np.sin(alpha/2)],

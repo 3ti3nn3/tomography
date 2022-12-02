@@ -3,9 +3,12 @@
 __pycache__/
 .DS_Store
 main.py
+main_1.py
+main_2.py
 test.py
 notebooks/
 logs/
 plots/
 data/
 results/
+archive/

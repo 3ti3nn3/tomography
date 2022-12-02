@@ -321,6 +321,178 @@ def infidelity_qutip(rho_1: np.array, rho_2: np.array):
     return 1-qt.fidelity(Qrho_1, Qrho_2)
 
 
+def __init__(self, name, path, new, debug, d):
+
+    self.name  = name
+    self.path  = path
+    self.new   = new
+    self.debug = debug
+
+    # setup logging
+    self.setup_logging('OneStepTomography')
+
+    # reload data
+    if self.new:
+        notNone = [v is None for v in d.values()]
+        assert all(notNone), 'Want to build up model from scratch but certain variables are not specified.'
+        self.logger.info('Buildung from scratch.')
+
+        self.d         = d
+        self.x_N  = np.logspace(np.log10(self.d['N'][0]), np.log10(self.d['N'][1]), self.d['N'][2], dtype=np.int)
+        self.povm = const.povm[self.d['povm_name']]
+
+        self._originals = None
+        self._estimates = np.empty((self.d['N_mean'], self.d['N'][2], self.d['dim'], self.d['dim']), dtype=np.complex)
+        self._valids    = np.ones((self.d['N_mean'], self.d['N'][2]), dtype=bool)
+        self._distances = np.empty((self.d['N_mean'], self.d['N'][2]), dtype=np.float)
+
+    else:
+        with open(self.path+'data/'+self.name+'.pt', 'rb') as file:
+            self.logger.info('Loading already existing estimation data!')
+            ost = pickle.load(file)
+
+            try:
+                self.N = ost.N
+            except:
+                self.N = [int(1e02), ost.N_max, ost.N_ticks]
+
+            self.dim     = ost.dim
+            self.N_mean  = ost.N_mean
+            self.x_N     = np.logspace(np.log10(self.N[0]), np.log10(self.N[1]), self.N[2], dtype=np.int)
+
+            self.povm_name  = ost.povm_name
+            self.povm       = ost.povm
+            self.f_sample   = ost.f_sample
+            self.f_estimate = ost.f_estimate
+            self.f_distance = ost.f_estimate
+
+            self._originals = ost._originals
+            self._estimates = ost._estimates
+            self._valids    = ost._valids
+            self._distances = ost._distances
+
+    # report loaded parameters
+    self.parameter_report()
+
+
+def __init__(self, name, path, new, debug):
+
+    self.name  = name
+    self.path  = path
+    self.new   = new
+
+    # setup logging
+    self.debug
+    self.setup_logging('TST - '+self.name)
+
+    # reload data
+    if self.new:
+        notNone = [v is None for v in d.values()]
+        assert all(notNone), 'Want to build up model from scratch but certain variables are not specified.'
+        self.logger.info('Buildung from scratch.')
+
+        self.dim     = dim
+        self.N       = N
+        self.N_mean  = N_mean
+        self.x_N     = np.logspace(np.log10(N[0]), np.log10(self.N[1]), self.N[2], dtype=np.int)
+        self.alpha   = alpha
+        self.mirror  = mirror
+
+        self.povm_name  = povm_name
+        self.povm       = const.povm[self.povm_name]
+        self.f_sample   = f_sample
+        self.f_estimate = f_estimate
+        self.f_distance = f_distance
+
+        self._originals = None
+        self._estimates = np.empty((self.N_mean, self.N[2], self.dim, self.dim), dtype=np.complex)
+        self._valids    = np.ones((self.N_mean, self.N[2]), dtype=bool)
+        self._distances = np.empty((self.N_mean, self.N[2]), dtype=np.float)
+
+    else:
+        with open(self.path+'data/'+self.name+'.pt', 'rb') as file:
+            self.logger.info('Loading already existing estimation data!')
+            tst = pickle.load(file)
+
+        try:
+            self.N = tst.N
+        except:
+            self.N = [int(1e02), tst.N_max, tst.N_ticks]
+        self.dim     = tst.dim
+        self.N_mean  = tst.N_mean
+        self.x_N     = np.logspace(np.log10(self.N[0]), np.log10(self.N[1]), self.N[2], dtype=np.int)
+        self.alpha   = tst.alpha
+        self.mirror  = tst.mirror
+
+        self.povm_name  = tst.povm_name
+        self.povm       = tst.povm
+        self.f_sample   = tst.f_sample
+        self.f_estimate = tst.f_estimate
+        self.f_distance = tst.f_estimate
+
+        self._originals = tst._originals
+        self._estimates = tst._estimates
+        self._valids    = tst._valids
+        self._distances = tst._distances
+
+    # report loaded parameters
+    self.parameter_report()
+
+
+def compare_distance(self, criteria_1, criteria_2):
+    '''
+    Compares up to four different Tomography schemes based on up to two criteria in one plot.
+
+    :param criteria_1: first criteria need to be consideread, same order as self.tomo_list
+    :param criteria_2: second criteria need to be considered, same order as self.tomo_list
+    '''
+    # initialize plot
+    plt.figure(figsize=(12, 9))
+    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.f_sample]} states")
+
+    c = [['navy', 'lightblue'], ['forestgreen', 'lightgreen'], ['red', 'lightsalmon'], ['black', 'grey'], ['peru', 'sandybrown'], ['darkorange', 'bisque']]
+    for idx, tomo in enumerate(self._list):
+
+        # calculate mean
+        mean = np.mean(tomo.get_distances(), axis=0, where=tomo.get_valids())
+        std  = np.std(tomo.get_distances(), axis=0, where=tomo.get_valids())
+
+        plt.plot(tomo.x_N, mean, color=c[idx][0], linestyle='None', markersize=5, marker='o', label=f"{w[tomo.f_estimate]} with {criteria_1[idx]} and {criteria_2[idx]}")
+
+        # fit curve
+        try:
+            f, a, A, a_err, A_err = tomo.extract_fitparam()
+
+            x = np.logspace(np.log10(tomo.N[0]), np.log10(tomo.N[1]), 100, dtype=np.int32)
+            plt.plot(x, f(x, *popt), color=c[idx][1], label=f"fit with a = {a:.2f} $\pm$ {a_err:.2f}, A = {A:.2f} $\pm$ {A_err:.2f}")
+        except:
+             self.logger.info(f"Plotting fit of {tomo.name} not possible!")
+
+    plt.xlabel(r'$N$')
+    plt.ylabel(f"{w[self.d['f_distance']]}")
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim((self.d['N_min'], self.d['N_max']))
+    plt.legend()
+
+    plt.savefig(self.path+'plots/comp_'+self.name+'.png', format='png', dpi=300)
+
+
+# tst.update_param('dim', 2)
+# tst.update_param('N_min', int(1e01))
+# tst.update_param('N_max', int(1e05))
+# tst.update_param('N_ticks', 20)
+# tst.update_param('N_mean', 250)
+# tst.update_param('povm_name', 'SIC-POVM')
+# tst.update_param('alpha', 0.95)
+# tst.update_param('mirror', True)
+# tst.update_param('cup', True)
+# tst.update_param('f_N0', N)
+# tst.update_param('N0', N(1e05, 0.95))
+# tst.update_param('f_sample', pure.unitary_to_density)
+# tst.update_param('f_estimate', inversion.two_step)
+# tst.update_param('f_distance', general.infidelity)
+
 # Pauli-6 states
 state6    = np.empty((6, 2, 2), dtype=np.complex)
 state6[0] = 1/np.sqrt(2)*np.array([1, 1])
