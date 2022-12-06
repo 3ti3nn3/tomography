@@ -50,9 +50,9 @@ class TwoStepTomography(Tomography):
             self.d['N0'] = self.d['f_N0'](self.d['N_max'], self.d['alpha'])
 
             notNone = [v is not None for v in d.values()]
-            assert all(notNone), 'Not all necessary parameters initialized.'
+            assert all(notNone), 'Not all necessary parameters were initialized.'
 
-            # initialize other parameters
+            # initialize other attributes
             self.povm    = const.povm[self.d['povm_name']]
             if self.d['cup']:
                 x0       = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N0']), int(self.d['N_ticks']/2), dtype=np.int)
@@ -123,61 +123,71 @@ class TwoStepTomography(Tomography):
         std  = np.std(self._distances, axis=0, where=self._valids)
 
         if self.d['cup']:
-            try:
-                f = lambda n, a, A: A * n**a
-
-                popt_0, pcov_0 = curve_fit(f, self.x_N[:idx_N0], mean[:idx_N0], p0=[-0.5, 0.2], sigma=std[:idx_N0])
-                popt_1, pcov_1 = curve_fit(f, self.x_N[idx_N0:], mean[idx_N0:], p0=[-0.8, 1])
-
-                popt     = np.concatenate((popt_0[:,None], popt_1[:,None]), axis=1)
-                popt_err = np.concatenate((np.diag(np.sqrt(pcov_0))[:,None], np.diag(np.sqrt(pcov_1))[:,None]), axis=1)
-
-                self.logger.info('curve_fit successful!')
-                self.logger.info(f"\n"\
-                    'Fit parameters\n'\
-                    '--------------\n'\
-                    'scaling first step:\n'\
-                    f"a = {popt[0,0]:.2e} +/- {np.sqrt(popt_err[0,0]):.2e}\n"\
-                    f"A = {popt[1,0]:.2e} +/- {np.sqrt(popt_err[1,0]):.2e}\n"\
-                    'scaling second step:\n'\
-                    f"a = {popt[0,1]:.2e} +/- {np.sqrt(popt_err[0,1]):.2e}\n"\
-                    f"A = {popt[1,1]:.2e} +/- {np.sqrt(popt_err[1,1]):.2e}")
-
-                return f, popt, popt_err
-            except Exception as e:
-                self.logger.info('curve_fit not successful!')
-                self.logger.debug('The following error occurred in extract_fitparam: '+str(e))
-                return f, None, None
+            f0 = lambda n, a, A: A * n**a
+            f1 = lambda n, a, A: A * n**a
         else:
-            try:
-                f = lambda n, a, A: A * n**a
+            f0 = lambda n, a, A: A * n**a
+            f1 = lambda n, a, A: A * (n-self.d['N0'])**a
 
-                popt_0, pcov_0 = curve_fit(f, self.x_N[:idx_N0], mean[:idx_N0], p0=[-0.5, 0.2], sigma=std[:idx_N0])
-                popt_1, pcov_1 = curve_fit(f, self.x_N[idx_N0+5:]-self.d['N0'], mean[idx_N0+5:], p0=[-0.7, 3], maxfev=4000)
+        try:
+            if self.d['cup']:
+                popt_0, pcov_0 = curve_fit(f0, self.x_N[:idx_N0], mean[:idx_N0], sigma=std[:idx_N0])
+                popt_0_err = np.sqrt(np.diag(pcov_0))
+            else:
+                popt_0, pcov_0 = curve_fit(f0, self.x_N[:idx_N0], mean[:idx_N0], p0=[-0.5, 0.2], sigma=std[:idx_N0])
+                popt_0_err = np.sqrt(np.diag(pcov_0))
 
-                popt     = np.concatenate((popt_0[:,None], popt_1[:,None]), axis=1)
-                popt_err = np.concatenate((np.diag(np.sqrt(pcov_0))[:,None], np.diag(np.sqrt(pcov_1))[:,None]), axis=1)
+            self.logger.info('curve_fit successful!')
+            self.logger.info(f"\n"\
+                'Fit parameters\n'\
+                '--------------\n'\
+                'scaling first step:\n'\
+                f"a = {popt_0[0]:.2e} +/- {np.sqrt(popt_0_err[0]):.2e}\n"\
+                f"A = {popt_0[1]:.2e} +/- {np.sqrt(popt_0_err[1]):.2e}")
+        except Exception as e:
+            self.logger.debug('The following error occurred in extract_fitparam: '+str(e))
+            self.logger.info('curve_fit in first step not successful!')
 
-                self.logger.info('curve_fit successful!')
-                self.logger.info(f"\n"\
-                    'Fit parameters\n'\
-                    '--------------\n'\
-                    'scaling first step:\n'\
-                    f"a = {popt[0,0]:.2e} +/- {np.sqrt(popt_err[0,0]):.2e}\n"\
-                    f"A = {popt[1,0]:.2e} +/- {np.sqrt(popt_err[1,0]):.2e}\n"\
-                    'scaling shifted second step:\n'\
-                    f"a = {popt[0,1]:.2e} +/- {np.sqrt(popt_err[0,1]):.2e}\n"\
-                    f"A = {popt[1,1]:.2e} +/- {np.sqrt(popt_err[1,1]):.2e}")
+            popt_0     = [None, None]
+            popt_0_err = [None, None]
 
-                return f, popt, popt_err
-            except Exception as e:
-                self.logger.info('curve_fit not successful!')
-                self.logger.debug('The following error occurred in extract_fitparam: '+str(e))
+        try:
+            if self.d['cup']:
+                popt_1, pcov_1 = curve_fit(f1, self.x_N[idx_N0:], mean[idx_N0:], maxfev=4000)
+                popt_1_err = np.sqrt(np.diag(pcov_1))
+            else:
+                popt_1, pcov_1 = curve_fit(f1, self.x_N[idx_N0:], mean[idx_N0:], p0=[-0.7, 3], maxfev=4000)
+                popt_1_err = np.sqrt(np.diag(pcov_1))
+
+            self.logger.info('curve_fit successful!')
+            self.logger.info(f"\n"\
+                'Fit parameters\n'\
+                '--------------\n'\
+                'scaling second step:\n'\
+                f"a = {popt_1[0]:.2e} +/- {np.sqrt(popt_1_err[0]):.2e}\n"\
+                f"A = {popt_1[1]:.2e} +/- {np.sqrt(popt_1_err[1]):.2e}")
+        except Exception as e:
+            self.logger.debug('The following error occurred in extract_fitparam: '+str(e))
+            self.logger.info('curve_fit in second step not successful!')
+
+            popt_1     = [None, None]
+            popt_1_err = [None, None]
+
+        f        = [f0, f1]
+        popt     = [popt_0, popt_1]
+        popt_err = [popt_0_err, popt_1_err]
+
+        return f, popt, popt_err
 
 
     def calculate_scaling(self):
         try:
-            f, [a, A], [a_err, A_err] = self.extract_fitparam()
+            _, popt, pcov = self.extract_fitparam()
+
+            a = popt[:,0]
+            A = popt[:,1]
+            a_err = pcov[:,0]
+            A_err = pcov[:,1]
 
             if self.d['cup']:
                 self._a     = np.log(A[1]/A[0])/np.log(self.d['N_max']) + a[1]
@@ -258,61 +268,83 @@ class TwoStepComparison(Comparison):
         return data[criteria]
 
 
-class AlphaDependency(Tomography):
 
-    x_alpha = None
-
-    _list = []
+class TwoStepAlpha(Tomography):
 
     def __init__(self, name, path, new, debug, d=None):
 
-        self.name  = name
-        self.path  = path
-        self.new   = new
+        self.name = name
+        self.path = path
 
         # setup logging
         self.debug = debug
-        self.setup_logging('AD - '+self.name)
+        self.setup_logging('TSA - '+self.name)
 
-        # add new paraemters
-        self.d['alpha_min']   = None
-        self.d['alpha_max']   = None
-        self.d['alpha_ticks'] = None
-        self.d['mirror']      = None
-        self.d['f_N0']        = None
+        if new:
+            assert d is not None, 'Dictionary needs to be specified to build new class.'
 
-        # reload data
-        if self.new:
-            assert d is not None, 'Want to build up model from scratch but certain variables are not specified.'
-            self.logger.info('Buildung from scratch.')
+            # add new parameters
+            self.d = {}
+            self.d['dim']         = None
+            self.d['N_min']       = None
+            self.d['N_max']       = None
+            self.d['N_ticks']     = None
+            self.d['N_mean']      = None
+            self.d['alpha_min']   = None
+            self.d['alpha_max']   = None
+            self.d['alpha_ticks'] = None
+            self.d['mirror']      = None
+            self.d['cup']         = None
+            self.d['f_N0']        = None
+            self.d['f_sample']    = None
+            self.d['f_estimate']  = None
+            self.d['f_distance']  = None
 
+            # initialize dictionary
             for key in d.keys():
                 self.d[key] = d[key]
 
-            self.x_N     = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), self.d['N_ticks'], dtype=np.int)
-            self.x_alpha = np.linspace(self.d['alpha_min'], self.d['alpha_max'], self.d['alpha_ticks'])
+            notNone = [v is not None for v in self.d.values()]
+            assert all(notNone), 'Not all necessary parameters were initialized.'
+
+            # initialize other attributes
             self.povm    = const.povm[self.d['povm_name']]
+            self.x_alpha = np.linspace(self.d['alpha_min'], self.d['alpha_max'], self.d['alpha_ticks'], endpoint=False, dtype=np.float)
 
-            self._a          = np.zeros(self.d['alpha_ticks'], dtype=np.float)
-            self._a_err      = np.zeros(self.d['alpha_ticks'], dtype=np.float)
-            self._A          = np.zeros(self.d['alpha_ticks'], dtype=np.float)
-            self._A_err      = np.zeros(self.d['alpha_ticks'], dtype=np.float)
+            # initialize list where model will be stored in
+            self._list = []
 
-            notNone = [v is not None for v in d.values()]
-            assert all(notNone), 'Not all necessary parameters initialized.'
+            # initialize storage for results
+            self._originals = None
+            self._estimates = np.empty((self.d['alpha_ticks'], self.d['N_mean'], self.d['N_ticks'], self.d['dim'], self.d['dim']), dtype=np.complex)
+            self._valids    = np.ones((self.d['alpha_ticks'], self.d['N_mean'], self.d['N_ticks']), dtype=bool)
+            self._distances = np.empty((self.d['alpha_ticks'], self.d['N_mean'], self.d['N_ticks']), dtype=np.float)
+
+            self._a     = np.zeros((3, self.d['alpha_ticks']), dtype=np.float)
+            self._a_err = np.zeros((3, self.d['alpha_ticks']), dtype=np.float)
+            self._A     = np.zeros((3, self.d['alpha_ticks']), dtype=np.float)
+            self._A_err = np.zeros((3, self.d['alpha_ticks']), dtype=np.float)
         else:
             with open(self.path+'data/'+self.name+'.pt', 'rb') as file:
-                self.logger.info('Loading already existing estimation data!')
-                ad = pickle.load(file)
+                tst = pickle.load(file)
 
-            self.d = ad.d
+            self.d       = tst.d
+            self.x_alpha = tst.x_alpha
+            self.povm    = tst.povm
 
-            self._alpha_list = ad._alpha_list
-            self._a          = ad._a
-            self._a_err      = ad._a_err
-            self._A          = ad._A
-            self._A_err      = ad._A_err
+            self._list = tst._list
 
+            self._originals = tst._originals
+            self._estimates = tst._estimates
+            self._valids    = tst._valids
+            self._distances = tst._distances
+
+            self._a     = tst._a
+            self._a_err = tst._a_err
+            self._A     = tst._A
+            self._A_err = tst._A_err
+
+            self.logger.info('Loading already existing estimation data!')
 
         # report loaded parameters
         self.parameter_report()
@@ -329,46 +361,56 @@ class AlphaDependency(Tomography):
 
 
     def create_models(self):
-        for alpha in self.x_alpha:
-            name = self.name+'_'+str(np.round(alpha, decimals=8))
+        for idx, alpha in enumerate(self.x_alpha):
+            name = self.name+f'_alpha{idx}'
 
-            tst_keys       = ['dim', 'N_min', 'N_max', 'N_ticks', 'N_mean', 'x_n', 'mirror', 'povm_name', 'f_sample', 'f_estimate', 'f_distance', 'f_N0']
+            tst_keys       = ['dim', 'N_min', 'N_max', 'N_ticks', 'N_mean', 'povm_name', 'mirror', 'cup', 'f_N0', 'f_sample', 'f_estimate', 'f_distance']
             tst_d          = {key: self.d[key] for key in tst_keys}
             tst_d['alpha'] = alpha
 
-            self._list.append(TwoStepTomography(name, True, self.debug, tst_d))
+            self._list.append(TwoStepTomography(name, self.path, True, self.debug, tst_d))
+
+            N0 = self.d['f_N0'](self.d['N_max'], alpha)
+            x0 = np.logspace(np.log10(self.d['N_min']), np.log10(N0), 5, dtype=np.int)
+            x1 = N0 + np.logspace(np.maximum(np.log10(self.d['N_min']), 2), np.log10(self.d['N_max']-N0), self.d['N_ticks']-5, dtype=np.int)
+            self._list[-1].x_N = np.concatenate((x0, x1))
 
             self._list[-1].create_originals()
             self._list[-1].reconstruct()
 
+            try:
+                _, popt, popt_err = self._list[-1].extract_fitparam()
+                a_avg, A_avg, a_avg_err, A_avg_err = self._list[-1].get_scaling()
+
+                self._a[:,idx]     = [popt[0][0], popt[1][0], a_avg]
+                self._A[:,idx]     = [popt[0][1], popt[1][1], A_avg]
+                self._a_err[:,idx] = [popt_err[0][1], popt_err[1][1], a_avg_err]
+                self._A_err[:,idx] = [popt_err[0][1], popt_err[1][1], A_avg_err]
+            except Exception as e:
+                # logger information
+                self.logger.debug('The following error occurred in create_models: '+str(e))
+
             self.logger.info(f"Tomography model for alpha = {alpha} initialized.")
 
 
-    def extract_gradient(self):
-        for idx, tomo in enumerate(self._list):
-
-            # calculate mean
-            mean = np.mean(tomo.get_distances(), axis=0, where=tomo.get_valids())
-            std  = np.std(tomo.get_distances(), axis=0, where=tomo.get_valids())
-
-            # fit
-            try:
-                f = lambda x, a, A: A * (x - tomo.d['alpha']*x)**a
-                popt, pcov = curve_fit(f, tomo.x_N, mean, p0=[-0.5, 1], sigma=std)
-
-                self._a[idx], self._A[idx]         = popt
-                self._a_err[idx], self._A_err[idx] = np.sqrt(np.diag(pcov))
-
-                self.logger.info('curve_fit successful!')
-            except:
-                 self.logger.info('curve_fit not successful!')
-
-
     def review_fit(self, idx_alpha):
-        self._list[idx_alpha].plot_distance()
+        try:
+            _, popt, popt_err = self._list[idx_alpha].extract_fitparam()
+            a_avg, A_avg, a_avg_err, A_avg_err = self._list[idx_alpha].get_scaling()
 
-    def compare_fit(self, list_idx_alpha):
-        pass
+            self.logger.debug(self._a[:,idx_alpha])
+            self.logger.debug([popt[0][0], popt[1][0], a_avg])
+
+            self._a[:,idx_alpha]     = [popt[0][0], popt[1][0], a_avg]
+            self._A[:,idx_alpha]     = [popt[0][1], popt[1][1], A_avg]
+            self._a_err[:,idx_alpha] = [popt_err[0][1], popt_err[1][1], a_avg_err]
+            self._A_err[:,idx_alpha] = [popt_err[0][1], popt_err[1][1], A_avg_err]
+
+            self._list[idx_alpha].plot_distance()
+        except Exception as e:
+            # logger information
+            self.logger.debug('The following error occurred in review_fit: '+str(e))
+            self._list[idx_alpha].plot_distance()
 
     def plot_alpha_dependency(self):
         visualization.plot_alpha_dependency(self)

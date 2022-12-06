@@ -231,66 +231,56 @@ def plot_distance(self):
     plt.plot(self.x_N[idx_N0:], mean[idx_N0:], color='forestgreen', linestyle='None', markersize=5, marker='o', label=f"second step {w[self.d['f_estimate']]} with {self.d['povm_name']}")
     plt.axvline(self.d['N0'], color='grey', linewidth=0.5, label='two-step threshold')
 
-    # plot fit parameters
-    if self.d['cup']:
-        try:
-            # plot fitted curves
-            f, [a, A], [a_err, A_err] = self.extract_fitparam()
+    # plot fits
+    f, popt, popt_err = self.extract_fitparam()
 
-            x  = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), 100, dtype=np.int32)
-            x0 = x[x<=self.d['N0']]
-            x1 = x[x>self.d['N0']]
+    x  = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), 100, dtype=np.int32)
+    x0 = x[x<=self.d['N0']]
+    x1 = x[x>self.d['N0']]
 
-            plt.fill_between(x0, y1=f(x0, a[0]-a_err[0], A[0]-A_err[0]), y2=f(x0, a[0]+a_err[0], A[0]+A_err[0]), color='lightblue', alpha=0.3)
-            plt.fill_between(x1, y1=f(x1, a[1]-a_err[1], A[1]-A_err[1]), y2=f(x1, a[1]+a_err[1], A[1]+A_err[1]), color='lightgreen', alpha=0.3)
-            plt.plot(x, f(x, a[0], A[0]), color='lightblue', label=f"scaling first step: a = {a[0]:.2e} $\pm$ {a_err[0]:.2e}")
-            plt.plot(x, f(x, a[1], A[1]), color='lightgreen', label=f"scaling second step: a = {a[1]:.2e} $\pm$ {a_err[1]:.2e}")
+    # plot first part
+    try:
+        plt.fill_between(x0, y1=f[0](x0, *(popt[0]-popt_err[0])), y2=f[0](x0, *(popt[0]+popt_err[0])), color='lightblue', alpha=0.3)
+        plt.plot(x, f[0](x, *popt[0]), color='lightblue', label=f"scaling first step: a = {popt[0][0]:.2e} $\pm$ {popt_err[0][0]:.2e}")
+    except Exception as e:
+        # logger information
+        self.logger.info(f"Plotting first fit wasn't successful!")
+        self.logger.debug('The following error occurred in plot_distance: '+str(e))
 
-            # fit and plot overall curve
-            a_avg, A_avg, a_avg_err, A_avg_err = self.get_scaling()
-
-            plt.plot(x, f(x, a_avg, A_avg), color='red', linewidth=0.5, label=f"overall scaling: a {a_avg:.2e} $\pm$ {a_avg_err:.2e}")
-
-            # logger information
-            self.logger.info(f"Plotting fit was successful!")
-        except Exception as e:
-            # logger information
-            self.logger.info(f"Plotting fit wasn't successful!")
-            self.logger.debug('The following error occurred in plot_distance: '+str(e))
-    else:
-        try:
+    # plot second part
+    try:
+        if self.d['cup']:
+            plt.fill_between(x1, y1=f[1](x1, *(popt[1]-popt_err[1])), y2=f[1](x1, *(popt[1]+popt_err[1])), color='lightgreen', alpha=0.3)
+            plt.plot(x, f[1](x, *popt[1]), color='lightgreen', label=f"scaling second step: a = {popt[1][0]:.2e} $\pm$ {popt_err[1][0]:.2e}")
+        else:
             # plot shifted results
             plt.plot(self.x_N[idx_N0:]-self.d['N0'], mean[idx_N0:], color='darkorange', linestyle='None', markersize=5, marker='o', label=f"shifted second step {w[self.d['f_estimate']]} with {self.d['povm_name']}")
 
-            # plot fitted curves
-            f, [a, A], [a_err, A_err] = self.extract_fitparam()
+            plt.fill_between(x, y1=f[1](x, *(popt[1]-popt_err[1])), y2=f[1](x, *(popt[1]-popt_err[1])), color='bisque', alpha=0.3)
+            plt.plot(x, f[1](x, *popt[1]), color='bisque', label=f"scaling shifted second step: a = {popt[1][0]:.2e} $\pm$ {popt_err[1][0]:.2e}")
+    except Exception as e:
+        # logger information
+        self.logger.info(f"Plotting second fit wasn't successful!")
+        self.logger.debug('The following error occurred in plot_distance: '+str(e))
 
-            x  = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), 100, dtype=np.int32)
-            x0 = x[x<=self.d['N0']]
-            x1 = x[x>self.d['N0']]
+    # plot average
+    try:
+        # fit and plot overall curve
+        a_avg, A_avg, a_avg_err, A_avg_err = self.get_scaling()
 
-            plt.fill_between(x0, y1=f(x0, a[0]-a_err[0], A[0]-A_err[0]), y2=f(x0, a[0]+a_err[0], A[0]+A_err[0]), color='lightblue', alpha=0.3)
-            plt.fill_between(x, y1=f(x, a[1]-a_err[1], A[1]-A_err[1]), y2=f(x, a[1]+a_err[1], A[1]+A_err[1]), color='bisque', alpha=0.3)
-            plt.plot(x, f(x, a[0], A[0]), color='lightblue', label=f"scaling first step: a = {a[0]:.2e} $\pm$ {a_err[0]:.2e}")
-            plt.plot(x, f(x, a[1], A[1]), color='bisque', label=f"scaling shifted second step: a = {a[1]:.2e} $\pm$ {a_err[1]:.2e}")
-
-            # fit and plot overall curve
-            a_avg, A_avg, a_avg_err, A_avg_err = self.get_scaling()
-
-            plt.plot(x, f(x, a_avg, A_avg), color='red', linewidth=0.5, label=f"overall scaling: a {a_avg:.2e} $\pm$ {a_avg_err:.2e}")
-
-            # logger information
-            self.logger.info(f"Plotting fit was successful!")
-        except Exception as e:
-            # logger information
-            self.logger.info(f"Plotting fit wasn't successful!")
-            self.logger.debug('The following error occurred in plot_distance: '+str(e))
+        plt.plot(x, f[0](x, a_avg, A_avg), color='red', linewidth=0.5, label=f"overall scaling: a {a_avg:.2e} $\pm$ {a_avg_err:.2e}")
+    except Exception as e:
+        # logger information
+        self.logger.info(f"Plotting average fit wasn't successful!")
+        self.logger.debug('The following error occurred in plot_distance: '+str(e))
 
     plt.xlabel(r'$N$')
     plt.ylabel(f"{w[self.d['f_distance']]}")
     plt.xscale('log')
     plt.yscale('log')
     plt.xlim(self.x_N[0], self.x_N[-1])
+    # plt.xlim(self.x_N[idx_N0], self.x_N[-1])
+    # plt.ylim(1e-03, 1e-02)
     plt.legend()
 
     plt.savefig(self.path+'plots/dist_'+self.name+'.png', format='png', dpi=300)
@@ -347,27 +337,69 @@ def compare_distance(self, criteria_1, criteria_2):
     plt.savefig(self.path+'plots/comp_'+self.name+'.png', format='png', dpi=300)
 
 
-def plot_alpha_dependency(self):
+def plot_alpha_dependency(self, error=False):
+    '''
+    Plots the alpha dependency of the scaling.
+    '''
+    plt.figure(figsize=(12,9))
+    plt.title(r'$\alpha$-dependency of second step scaling in TST')
+
+    if error:
+        plt.fill_between(self.x_alpha, y1=self._a[0]-self._a_err[0], y2=self._a[0]+self._a_err[0], color='navy', alpha=0.3)
+        plt.fill_between(self.x_alpha, y1=self._a[1]-self._a_err[1], y2=self._a[1]+self._a_err[1], color='forestgreen', alpha=0.3)
+        plt.fill_between(self.x_alpha, y1=self._a[2]-self._a_err[2], y2=self._a[2]+self._a_err[2], color='red', alpha=0.3)
+
+    plt.plot(self.x_alpha, self._a[0], marker='o', markersize=5, color='navy', label=r'$a_0$')
+    plt.plot(self.x_alpha, self._a[1], marker='o', markersize=5, color='forestgreen', label=r'$a_1$')
+    plt.plot(self.x_alpha, self._a[2], marker='o', markersize=5, color='red', label=r'$a_{avg}$')
+
+    # x     = np.linspace(self.d['alpha_min'], self.d['alpha_max'], 100)
+    # plt.plot(x, 2*x-1/2-1, color='orange', label=r'$\alpha+a_0-1$')
+
+    plt.axhline(-1, color='grey', linewidth=0.5)
+    plt.axvline(2/3, color='grey', linewidth=0.5)
+    plt.xlim(np.min(self.x_alpha), np.max(self.x_alpha))
+    plt.ylabel(r'exponent $a$')
+    plt.xlabel(r'$\alpha$')
+    plt.legend()
+
+    plt.savefig(self.path+'plots/alpha_'+self.name+'.png', format='png',dpi=300)
+
+
+def plot_aA_dependency(self):
     '''
     Plots the alpha dependency of the scaling.
     '''
     fig, ax1 = plt.subplots(figsize=(12,9))
-    fig.suptitle(r'$\alpha$-dependency of fit parameters')
+    fig.suptitle(r'$\alpha$-dependency of second step scaling in TST')
     ax2 = ax1.twinx()
 
     ax1.set_xlabel(r'$\alpha$')
     ax1.set_xlim(np.min(self.x_alpha), np.max(self.x_alpha))
 
-    leg1, = ax1.plot(self.x_alpha, self._a, marker='o', markersize=5, linestyle=None, color='navy', label=r'$a$')
-    ax1.fill_between(self.x_alpha, y1=self._a-self._a_err, y2=self._a+self._a_err, color='lightblue', alpha=0.3)
-    ax1.hlines(-1, np.min(self.x_alpha), np.max(self.x_alpha), color='grey', linewidth=0.5)
+    leg1, = ax1.plot(self.x_alpha, self._a[0], marker='o', markersize=5, color='navy', label=r'$a_0$')
+    ax1.fill_between(self.x_alpha, y1=self._a[0]-self._a_err[0], y2=self._a[0]+self._a_err[0], color='navy', alpha=0.3)
+
+    leg2, = ax1.plot(self.x_alpha, self._a[1], marker='o', markersize=5, color='forestgreen', label=r'$a_1$')
+    # ax1.fill_between(self.x_alpha, y1=self._a[1]-self._a_err[1], y2=self._a[1]+self._a_err[1], color='forestgreen', alpha=0.3)
+
+    leg3, = ax1.plot(self.x_alpha, self._a[2], marker='o', markersize=5, color='red', label=r'$a_{avg}$')
+    ax1.fill_between(self.x_alpha, y1=self._a[2]-self._a_err[2], y2=self._a[2]+self._a_err[2], color='red', alpha=0.3)
+
+    ax1.axhline(-1, color='grey', linewidth=0.5)
+    ax1.axvline(2/3, color='grey', linewidth=0.5)
     ax1.set_ylabel(r'exponent $a$')
 
-    leg2, = ax2.plot(self.x_alpha, self._A, marker='o', markersize=5, linestyle=None, color='forestgreen', label=r'$A$')
-    ax2.fill_between(self.x_alpha, y1=self._A-self._A_err, y2=self._A+self._A_err, color='lightgreen', alpha=0.3)
+    # x     = np.linspace(self.d['alpha_min'], self.d['alpha_max'], 100)
+    # leg2, = ax1.plot(x, 2*x-1/2-1, color='orange', label=r'$\alpha+a_0-1$')
+
+    leg4, = ax2.plot(self.x_alpha, self._A[2], marker='o', markersize=5, color='darkred', label=r'$A_{avg}$')
+    # ax2.fill_between(self.x_alpha, y1=self._A[2]-self._A_err[2], y2=self._A[2]+self._A_err[2], color='darkred', alpha=0.3)
     ax2.set_ylabel(r'prefactor $A$')
 
-    plt.legend(handles=[leg1, leg2])
+    plt.legend(handles=[leg1, leg2, leg3])
+    # plt.legend(handles=[leg1, leg2, leg3, leg4])
+
 
     plt.savefig(self.path+'plots/alpha_'+self.name+'.png', format='png',dpi=300)
 
