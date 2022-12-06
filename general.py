@@ -148,3 +148,25 @@ def state(rho: np.array, prec=1e-15):
     :return: values
     '''
     return LA.eig(rho)[0], np.trace(rho), np.sum(np.abs(rho-H(rho)))
+
+
+def N_exp(N_max: int, alpha: float):
+    '''
+    Calculates the exponential representation of N0.
+
+    :param N_max: N_max
+    :param alpha: exponent
+    :return: N0
+    '''
+    return int(N_max**alpha)
+
+
+def N_frac(N_max: int, alpha: float):
+    '''
+    Calculates the fractional representation of N0.
+
+    :param N_max: N_max
+    :param alpha: fractiona
+    :return: N0
+    '''
+    return int(N_max*alpha)
