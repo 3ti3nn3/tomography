@@ -5,12 +5,46 @@ import const
 import check
 
 
+# rotation matrices
+def Rx(alpha):
+    '''
+    Calculates rotation matrix about x-axis.
+
+    :param alpha: rotation angle
+    :return: rotation matrix
+    '''
+    return np.transpose([[np.cos(alpha/2), -1j*np.sin(alpha/2)],
+                         [-1j*np.sin(alpha/2), np.cos(alpha/2)]], axes=[2, 0, 1])
+
+
+def Ry(theta):
+    '''
+    Calculates rotation matrix about x-axis.
+
+    :param theta: rotation angle
+    :return: rotation matrix
+    '''
+    return np.transpose([[np.cos(theta/2), -np.sin(theta/2)],
+                         [np.sin(theta/2), np.cos(theta/2)]], axes=[2, 0, 1])
+
+
+def Rz(phi):
+    '''
+    Calculates rotation matrix about x-axis.
+
+    :param phi: rotation angle
+    :return: rotation matrix
+    '''
+    return np.transpose([[np.exp(1j*phi/2, dtype=np.complex), np.zeros(len(phi), dtype=np.complex)],
+                         [np.zeros(len(phi), dtype=np.complex), np.exp(-1j*phi/2, dtype=np.complex)]], axes=[2, 0, 1])
+
+
 def H(rho: np.array):
     '''
-    Calculates the conjugate transpose of an array.
+    Calculates the conjugate transpose of an array of states or one single state.
 
     :param rho: Nxdxd or dxd array of density matrices
-    :return: complex conjugate
+    :return: complex conjugate of density matrices
     '''
     if len(rho.shape)==2:
         return np.transpose(np.conjugate(rho))
@@ -24,8 +58,8 @@ def expect(operator: np.array, rho: np.array):
     '''
     Calculates the expectation value of an operator and a state.
 
-    :param operator: operator
-    :param rho     : state
+    :param operator: operator or set of operators
+    :param rho     : dxd array of density matrix
     :return: expectation value
     '''
     return np.real(np.trace(operator@rho, axis1=-2, axis2=-1))
@@ -35,8 +69,8 @@ def expect_xyz(rho: np.array):
     '''
     Determines the sigma_x, sigma_y and sigma_z expectation value.
 
-    :param rho: state in density matrix representation
-    :return: array of the three expectation values
+    :param rho: Nxdxd or dxd array of density matrices
+    :return: Nx3 or 3 array of the three expectation values
     '''
     try:
         return np.real([expect(const.sx, rho), expect(const.sy, rho), expect(const.sz, rho)]).T
@@ -46,10 +80,10 @@ def expect_xyz(rho: np.array):
 
 def euclidean_dist(rho_1: np.array, rho_2: np.array):
     '''
-    Calculates the euclidean distance between the Bloch vector of the given states.
+    Calculates the euclidean distance.
 
-    :param rho_1: density representation of the first state
-    :param rho_2: density representation of the second state
+    :param rho_1: dxd array of density matrix
+    :param rho_2: dxd array of density matrix
     :return: euclidean distance of the Bloch vectors
     '''
     bloch_1 = expect_xyz(rho_1)
@@ -62,8 +96,8 @@ def hilbert_dist(rho_1: np.array, rho_2: np.array):
     '''
     Calculates the Hilbert-Schmidt distance.
 
-    :param rho_1: density representation of the first states
-    :param rho_2: density representation of the second state
+    :param rho_1: dxd array of density matrix
+    :param rho_2: dxd array of density matrix
     :return: Hilbert-Schmidt distance
     '''
     return np.real(np.trace((rho_1-rho_2)**2))
@@ -73,8 +107,8 @@ def bures_dist(rho_1: np.array, rho_2: np.array):
     '''
     Calculates the Bures distance of the given states according to qutip.
 
-    :param rho_1: density representation of the first state
-    :param rho_2: density represnetation of the second state
+    :param rho_1: dxd array of density marix
+    :param rho_2: dxd array of density matrix
     :return: fidelity
     '''
     Qrho_1 = qt.Qobj(rho_1)
@@ -85,11 +119,11 @@ def bures_dist(rho_1: np.array, rho_2: np.array):
 
 def infidelity(rho_1: np.array, rho_2: np.array):
     '''
-    Calculates the fidelity of two given qubit state according to Wikipedia.
+    Calculates the infidelity of two one qubit states according to Wikipedia.
 
-    :param rho_1: density representation of the first state
-    :param rho_2: density representation of the second state
-    :retur: fidelity
+    :param rho_1: dxd array of density matrix
+    :param rho_2: dxd array of density matrix
+    :retur: infidelity
     '''
     return np.real(1 - np.trace(rho_1@rho_2) - 2*np.sqrt(LA.det(rho_1)*LA.det(rho_2)))
 
@@ -98,16 +132,16 @@ def realign_povm(M: np.array, phi: np.float, theta: np.float, mirror=True):
     '''
     Rotates the set of POVM by the given angles.
 
-    :param M    : set of POVMs
+    :param M    : Nxdxd array of set of POVMs
     :param phi  : polar angle
     :param theta: angular angle
-    :return: realigned POVM
+    :return: Nxdxd realigned POVMs
     '''
     if mirror:
-        R = const.Rz(np.array([-phi-np.pi]))@const.Ry(np.array([np.pi-theta]))
+        R = Rz(np.array([-phi-np.pi]))@Ry(np.array([np.pi-theta]))
         return R@M@H(R)
     else:
-        R = const.Rz(np.array([-phi]))@const.Ry(np.array([theta]))
+        R = Rz(np.array([-phi]))@Ry(np.array([theta]))
         return R@M@H(R)
 
 
@@ -115,9 +149,8 @@ def extract_param(rho: np.array):
     '''
     Determines the angles of rho's orientation and the distance r.
 
-    :param rho: density representation of state
-    :return: for pure states: (phi, theta)
-        for mixed states: (r, phi, theta)
+    :param rho: dxd array of density matrix
+    :return: tuple of (r, phi, theta)
     '''
     n = expect_xyz(rho)
 
@@ -128,31 +161,19 @@ def extract_param(rho: np.array):
     return r, phi, theta
 
 
-def purity(rhos: np.array, prec=1e-15):
+def purity(rho: np.array):
     '''
-    Computes purity of a given array of density matrix.
+    Calculates the purity of an array of density matrices.
 
-    :param rhos: array of density matrices
-    :param prec: precision of the purity comparison
+    :param rho: Nxdxd or dxd array of density matrices
     :return: purity
     '''
-    return np.trace(rhos@rhos, axis1=-2, axis2=-1, dtype=complex)
-
-
-def state(rho: np.array, prec=1e-15):
-    '''
-    Computes whether a given state is actually a valid state.
-
-    :param rho : state in density representation
-    :param prec: precision of comparisons
-    :return: values
-    '''
-    return LA.eig(rho)[0], np.trace(rho), np.sum(np.abs(rho-H(rho)))
+    return np.trace(rho@rho, axis1=-2, axis2=-1, dtype=complex)
 
 
 def N_exp(N_max: int, alpha: float):
     '''
-    Calculates the exponential representation of N0.
+    Calculates the exponential representation of N0 in two step adaptive scheme.
 
     :param N_max: N_max
     :param alpha: exponent
@@ -163,10 +184,10 @@ def N_exp(N_max: int, alpha: float):
 
 def N_frac(N_max: int, alpha: float):
     '''
-    Calculates the fractional representation of N0.
+    Calculates the fractional representation of N0. in the two step adaptive scheme.
 
     :param N_max: N_max
-    :param alpha: fractiona
+    :param alpha: fraction
     :return: N0
     '''
     return int(N_max*alpha)

@@ -5,9 +5,9 @@ import general
 
 def state(rho: np.array, prec=1e-14):
     '''
-    Checks whether a given state is actually a valid state.
+    Checks whether a given state is a valid state.
 
-    :param rho : state in density representation
+    :param rho : dxd array of state in density representation
     :param prec: precision of comparisons
     :return: boolean
     '''
@@ -20,30 +20,29 @@ def state(rho: np.array, prec=1e-14):
 
 def purity(rhos: np.array, prec=1e-15):
     '''
-    Check purity of a given array of density matrix.
+    Checks the purity of multiple density matrices.
 
-    :param rhos: array of density matrices
+    :param rhos: Nxdxd array of density matrices
     :param prec: precision of the purity comparison
-    :return: boolean whether given density matrices are pure or not
+    :return: boolean 
     '''
     # compute purity
     purity = np.trace(rhos@rhos, axis1=-2, axis2=-1, dtype=complex)
 
-    # exclude inaccuracies caused by finte number representation of a computers
+    # exclude inaccuracies caused by finte number representation of a computer
     if np.all(np.abs(np.imag(purity)) < prec) and np.all(np.abs(purity-1) < prec):
         return True
     else:
-        shadow = np.logical_or(np.all(np.abs(np.imag(purity)) >= prec), np.all(np.abs(purity-1) >= prec))
         return False
 
 
 def povm(M: np.array, prec=1e-15):
     '''
-    Checks a given set of matrices whether they are a POVM or not.
+    Checks whether a given set of matrices is a POVM or not.
 
     :param M   : Nxdxd dimensional array where d is the dimension of the considered system
     :param prec: precision of comparisons
-    :return: boolean wheter the criteria of a POVM are fulfilled by the given set
+    :return: boolean
     '''
     # hermitian
     bool_herm = M==general.H(M)

@@ -7,13 +7,12 @@ import const
 
 def measure(rho: np.array, N: int, M: np.array):
     '''
-    Simulates several quantum measurements for set of operators.
+    Simulates quantum measurements for set POVMs.
 
-    :param rho: state to sample from
+    :param rho: dxd array of density matrix
     :param N  : sample size
-    :param M  : POVM set
-    :return: array of N measured results with numbers between 0 and len(M)
-        sampled according to their probabilities
+    :param M  : Nxdxd array of POVM set
+    :return: N array of measured results
     '''
     p_cum = np.cumsum(np.trace(rho@M, axis1=-2, axis2=-1))
     r     = np.random.uniform(size=N)

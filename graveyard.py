@@ -103,7 +103,7 @@ def distance(func_dist: tuple, func_rho: tuple, func_1: tuple, func_2: tuple, N_
     dist_m2  = np.zeros((N_rho, N_N), dtype=np.float)
 
     # define validity function
-    if func_rho[1] is pure.unitary_to_density:
+    if func_rho[1] is pure.sample_unitary:
         validity = lambda rho: check.state(rho) and check.purity(rho)
     else:
         validity = lambda rho: check.state(rho)
@@ -210,7 +210,7 @@ def distance_adaptive(func_dist: tuple, func_rho: tuple, func_1: tuple, func_2: 
     dist_m2  = np.zeros((N_rho, N_N), dtype=np.float)
 
     # define validity function
-    if func_rho[1] is pure.unitary_to_density:
+    if func_rho[1] is pure.sample_unitary:
         validity = lambda rho: check.state(rho) and check.purity(rho)
     else:
         validity = lambda rho: check.state(rho)
@@ -319,6 +319,86 @@ def infidelity_qutip(rho_1: np.array, rho_2: np.array):
     Qrho_2 = qt.Qobj(rho_2)
 
     return 1-qt.fidelity(Qrho_1, Qrho_2)
+
+
+def generate_uniform(N: int):
+    '''
+    Generates uniformly distributed Bloch parameters for mixed states.
+
+    :param N: number of samples
+    :return: tuple of arrays of radii, polar angles and azimuth angles
+    '''
+    x     = np.random.uniform(0, 1, size=N)
+    y     = -1*np.random.uniform(-1, 0, size=N)
+
+    theta = np.arccos(1-2*x)
+    phi   = np.random.uniform(-np.pi, np.pi, size=N)
+    r     = np.power(y, 1/3)
+
+    return r, phi, theta
+
+
+def blochvector_to_density(r: np.array, phi: np.array, theta: np.array):
+    '''
+    Builds mixed states via the Bloch representation.
+
+    :param r    : array of radii
+    :param phi  : array of polar angles
+    :param theta: array of azimuth angles
+    :return: array of mixed states
+    '''
+    n = r*np.array([np.cos(phi)*np.sin(theta),
+                    np.sin(phi)*np.sin(theta),
+                    np.cos(theta)])
+
+    if len(n.shape)==1:
+        return 1/2 * (const.se + np.einsum('k,klm->lm', n, const.sa))
+    else:
+        return 1/2 * (const.se + np.einsum('kn,klm->nlm', n, const.sa))
+
+
+def generate_uniform(N: int):
+    '''
+    Generates data in compliance with transforming surface element. Data is uniformly smapled according to
+    the concept of Inverser Transform Sampling.
+
+    :param N: number of uniformly distributed points
+    :return: an array both for the polar and the azimuth angle of lenght N
+    '''
+    x     = np.random.uniform(0, 1, size=N)
+    theta = np.arccos(1-2*x)
+    phi   = np.random.uniform(-np.pi, np.pi, size=N)
+
+    return phi, theta
+
+
+def angles_to_density(phi: np.array, theta: np.array):
+    '''
+    Takes polar and azimuth angles and builds a state in computational basis using
+    array representation.
+
+    :param phi  : array of uniformly distributed polar angles
+    :param theta: array of uniformly distributed azimuth angles
+    :return: array of uniformly distributed states
+    '''
+    Psi = np.array([np.cos(theta/2), np.sin(theta/2)*np.exp(1j*phi)]).T
+
+    return np.einsum('nk,nj->nkj', Psi, np.conjugate(Psi))
+
+
+def rotation_to_density(phi, theta):
+    '''
+    Takes polar and azimuth angles and builds a vector of expecation values in cartesian coordinates.
+
+    :param phi  : array or float of polar angle
+    :param theta: array or float of azimuth angle
+    return: 3xlen(phi)-dimensional array of expectations values in cartesian coordinates
+    '''
+    R   = general.Rz(phi)@general.Ry(theta)
+    RH  = np.transpose(np.conjugate(R), axes=[0, 2, 1])
+    rho = R@np.array([[1, 0], [0, 0]])@RH
+
+    return rho
 
 
 def __init__(self, name, path, new, debug, d):
@@ -461,7 +541,7 @@ def compare_distance(self, criteria_1, criteria_2):
 
         # fit curve
         try:
-            f, a, A, a_err, A_err = tomo.extract_fitparam()
+            f, a, A, a_err, A_err = tomo.calculate_fitparam()
 
             x = np.logspace(np.log10(tomo.N[0]), np.log10(tomo.N[1]), 100, dtype=np.int32)
             plt.plot(x, f(x, *popt), color=c[idx][1], label=f"fit with a = {a:.2f} $\pm$ {a_err:.2f}, A = {A:.2f} $\pm$ {A_err:.2f}")
@@ -478,6 +558,20 @@ def compare_distance(self, criteria_1, criteria_2):
     plt.savefig(self.path+'plots/comp_'+self.name+'.png', format='png', dpi=300)
 
 
+# calclating overall infidelity
+elif popt_0[0]!=None and popt_1[1]!=None:
+    if self.d['cup']:
+        popt_2[0] = np.log(popt_1[1]/popt_0[1])/np.log(self.d['N_max']) + popt_1[0]
+        popt_2[1] = popt_0[1]
+        popt_2_err[0] = np.sqrt( (1/(np.log(self.d['N_max'])*popt_1[1]) * popt_1_err[1])**2 + (1/(np.log(self.d['N_max'])*popt_0[1]) * popt_0_err[1])**2 + (popt_1_err[0])**2 )
+        popt_2_err[1] = popt_0_err[1]
+    else:
+        popt_2[0] = np.log(popt_1[1]/popt_0[1])/np.log(self.d['N_max']) + popt_1[0] * np.log(self.d['N_max'] - self.d['N0'])/np.log(self.d['N_max'])
+        popt_2[1] = popt_0[1]
+        popt_2_err[0] = np.sqrt( (1/(np.log(self.d['N_max'])*popt_1[1]) * popt_1_err[1])**2 + (1/(np.log(self.d['N_max'])*popt_0[1]) * popt_0_err[1])**2 + (np.log(self.d['N_max'] - self.d['N0'])/np.log(self.d['N_max']) * popt_1_err[0])**2 )
+        popt_2_err[1] = popt_0_err[1]
+
+
 # tst.update_param('dim', 2)
 # tst.update_param('N_min', int(1e01))
 # tst.update_param('N_max', int(1e05))
@@ -489,7 +583,7 @@ def compare_distance(self, criteria_1, criteria_2):
 # tst.update_param('cup', True)
 # tst.update_param('f_N0', N)
 # tst.update_param('N0', N(1e05, 0.95))
-# tst.update_param('f_sample', pure.unitary_to_density)
+# tst.update_param('f_sample', pure.sample_unitary)
 # tst.update_param('f_estimate', inversion.two_step)
 # tst.update_param('f_distance', general.infidelity)
 

@@ -5,17 +5,17 @@ import general
 import simulate
 
 
-def iterative(D: np.array, M: np.array, dim=2):
+def iterative(D: np.array, M: np.array):
     '''
-    Performs iterative MLE.
+    Estimates state according to iterative MLE.
 
-    :param D   : measured data set
+    :param D   : N array of measured data
         datatype: D[i] = [index of POVM]
-    :param M   : set of POVMs
+    :param M   : Nxdxd array of POVM set
     :param iter: number of iterations
-    :param rho : information already known about true state, starting point of iteration
-    :return: iterative MLE estimator
+    :return: dxd array of iterative MLE estimator
     '''
+    dim = M.shape[-1]
     M_D = M[D]
 
     iter_max = 500
@@ -39,15 +39,30 @@ def iterative(D: np.array, M: np.array, dim=2):
     return rho_1
 
 
-def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=True, mirror=True):
+def gradient(D: np.array, M: np.array):
+    '''
+    Estimates state according to iterative MLE using gradient descent.
+
+    :param D   : N array of measured data
+        datatype: D[i] = [index of POVM]
+    :param M   : Nxdxd array of POVM set
+    :param iter: number of iterations
+    :return: dxd array of iterative MLE estimator
+    '''
+    pass
+
+
+def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=True, mirror=True, prec=1e-14):
     '''
     Estimates with one intermediate step of POVM realignment.
 
-    :param rho  : true state
-    :param M0   : inital POVM set
-    :param N    : total number of measurements
-    :param N0   : total number of mearurements in the first step
-    :return: adaptive estimated state
+    :param rho   : dxd array of density matrix
+    :param M0    : Nxdxd array of POVM set
+    :param N     : total number of measurements
+    :param N0    : number of measurements in the first step
+    :param cup   : all data or only data after first estimate
+    :param mirror: align or antialign
+    :return: dxd array of adaptive mle estimator
     '''
     # initial estimate
     D0    = simulate.measure(rho, np.minimum(N, N0), M0)
@@ -67,7 +82,6 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=True, mirror=True
         # final guess using previous data
         M_D0 = M0[D0]
         M_D1 = M1[D1]
-
         if cup:
             M_D = np.concatenate([M_D0, M_D1], axis=0)
         else:
@@ -75,9 +89,8 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=True, mirror=True
 
         iter_max = 500
         dist     = float(1)
-
-        rho_10 = np.eye(2)/2
-        rho_11 = np.eye(2)/2
+        rho_10   = np.eye(2)/2
+        rho_11   = np.eye(2)/2
 
         j = 0
         while j<iter_max and dist>1e-14:

@@ -83,9 +83,6 @@ class Tomography:
     def get_scaling(self):
         return self._a, self._A, self._a_err, self._A_err
 
-    def plot_validity(self):
-        visualization.plot_validity(self)
-
     def create_originals(self):
         self.logger.info('New set of original states will be created.')
         assert self._originals is None, f"Want to create new set of samples even though a set already exists."
@@ -95,14 +92,14 @@ class Tomography:
     def reconstruct(self):
         pass
 
-    def extract_fitparam(self):
-        pass
-
-    def calculate_scaling(self):
+    def calculate_fitparam(self):
         pass
 
     def plot_distance(self):
-        visualization.plot_distance(self)
+        pass
+
+    def plot_validity(self):
+        visualization.plot_validity(self)
 
     def dispatch_model(self, path=''):
         with open(self.path+'data/'+self.name+'.pt', "wb") as file:
@@ -114,16 +111,16 @@ class Tomography:
             shutil.move(self.path+'data/'+self.name+'.pt', path+'data/'+self.name+'.pt')
             try:
                 shutil.move(self.path+'plots/val_'+self.name+'.png', path+'plots/val_'+self.name+'.png')
-            except:
-                pass
+            except Exception as e:
+                self.logger.debug(f"The following error occurred in dispatch_model: {e}")
             try:
                 shutil.move(self.path+'plots/dist_'+self.name+'.png', path+'plots/dist_'+self.name+'.png')
-            except:
-                pass
+            except Exception as e:
+                self.logger.debug(f"The following error occurred in dispatch_model: {e}")
             try:
                 shutil.move(self.path+'plots/alpha_'+self.name+'.png', path+'plots/alpha_'+self.name+'.png')
-            except:
-                pass
+            except Exception as e:
+                self.logger.debug(f"The following error occurred in dispatch_model: {e}")
 
 
 
@@ -176,8 +173,11 @@ class Comparison:
     def get_N_min(self):
         return [tomo.d['N_min'] for tomo in self._list]
 
+    def transform_citeria(self, criteria):
+        pass
+
     def compare_distance(self, criteria_1, criteria_2):
-        visualization.compare_distance(self, criteria_1, criteria_2)
+        visualization.compare_distance_osc(self, criteria_1, criteria_2)
 
 
     def dispatch_model(self, path=''):
@@ -190,5 +190,5 @@ class Comparison:
             shutil.move(self.path+'data/'+self.name+'.log', path+'data/'+self.name+'.log')
             try:
                 shutil.move(self.path+'plots/comp_'+self.name+'.png', path+'data/comp_'+self.name+'.png')
-            except:
-                pass
+            except Exception as e:
+                self.logger.debug(f"The following error occurred in dispatch_model: {e}")

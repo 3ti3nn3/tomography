@@ -15,9 +15,6 @@ M5 = 1/6*np.array([[1, 1j], [-1j, 1]])
 M3 = 1/3*np.array([[1, 0], [0, 0]])
 M6 = 1/3*np.array([[0, 0], [0, 1]])
 
-M_up   = np.array([M1, M2, M3])
-M_down = np.array([M4, M5, M6])
-
 # Pauli-4 POVM
 pauli4 = np.array([M1, M2, M3, np.eye(2)-M1-M2-M3])
 
@@ -46,15 +43,3 @@ povm['SIC-POVM'] = sic
 
 # Pauli string POVM
 string1d = np.array([se/2, sx/2, sy/2, sz/2])
-
-
-# rotation matrices
-def Rx(alpha):
-    return np.transpose([[np.cos(alpha/2), -1j*np.sin(alpha/2)],
-                         [-1j*np.sin(alpha/2), np.cos(alpha/2)]], axes=[2, 0, 1])
-def Ry(theta):
-    return np.transpose([[np.cos(theta/2), -np.sin(theta/2)],
-                         [np.sin(theta/2), np.cos(theta/2)]], axes=[2, 0, 1])
-def Rz(phi):
-    return np.transpose([[np.exp(1j*phi/2, dtype=np.complex), np.zeros(len(phi), dtype=np.complex)],
-                         [np.zeros(len(phi), dtype=np.complex), np.exp(-1j*phi/2, dtype=np.complex)]], axes=[2, 0, 1])
