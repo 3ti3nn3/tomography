@@ -20,10 +20,9 @@ import check
 w = {}
 
 # f_sample
-w[pure.unitary_to_density]    = 'pure'
+w[pure.sample_unitary]    = 'pure'
 w[mixed.sample_bures]         = 'mixed'
 w[mixed.sample_hilbert]       = 'mixed'
-w[mixed.hermitian_to_density] = 'mixed'
 
 # f_estimate
 w[mle.iterative]      = 'MLE'
@@ -58,14 +57,16 @@ def qubit(points=np.array([None]), vectors=np.array([None]), states=np.array([No
     if np.all(points != None):
         try:
             b.add_points(general.expect_xyz(points).T)
-        except:
+        except Exception as e:
             b.add_points(general.expect_xyz(points))
+            print(f"The follwoing exceptino occurred in qubit: {e}")
         b.render()
     if np.all(vectors!= None):
         try:
             b.add_vectors(general.expect_xyz(vectors))
-        except:
+        except Exception as e:
             b.add_vectors(general.expect_xyz(vectors))
+            print(f"The follwoing exceptino occurred in qubit: {e}")
         b.render()
     if np.all(states != None):
         b.add_states(states, kind=kind)
@@ -212,9 +213,11 @@ def eigenvalue_distribution(f_sample, N):
     plt.show()
 
 
-def plot_distance(self):
+def plot_distance1(self, n=0):
     '''
     Plots the N-dependency of the distance measure for the given simulation.
+
+    :param n: integer for disregarding the first n measurement points
     '''
     idx_N0 = np.argmax(self.x_N>self.d['N0'])
 
@@ -226,14 +229,13 @@ def plot_distance(self):
     mean = np.mean(self.get_distances(), axis=0, where=self.get_valids())
     std  = np.std(self.get_distances(), axis=0, where=self.get_valids())
 
-    # plot both steps
-    plt.plot(self.x_N[:idx_N0], mean[:idx_N0], color='navy', linestyle='None', markersize=5, marker='o', label=f"frist step {w[self.d['f_estimate']]} with {self.d['povm_name']}")
-    plt.plot(self.x_N[idx_N0:], mean[idx_N0:], color='forestgreen', linestyle='None', markersize=5, marker='o', label=f"second step {w[self.d['f_estimate']]} with {self.d['povm_name']}")
+    # plot measurement data
+    plt.plot(self.x_N[:idx_N0], mean[:idx_N0], color='navy', linestyle='None', markersize=5, marker='o', label=f"frist step {w[self.d['f_estimate']]}")
+    plt.plot(self.x_N[idx_N0:], mean[idx_N0:], color='forestgreen', linestyle='None', markersize=5, marker='o', label=f"second step {w[self.d['f_estimate']]}")
     plt.axvline(self.d['N0'], color='grey', linewidth=0.5, label='two-step threshold')
 
     # plot fits
-    f, popt, popt_err = self.extract_fitparam()
-
+    f, popt, popt_err = self.calculate_fitparam(n=n)
     x  = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), 100, dtype=np.int32)
     x0 = x[x<=self.d['N0']]
     x1 = x[x>self.d['N0']]
@@ -243,7 +245,6 @@ def plot_distance(self):
         plt.fill_between(x0, y1=f[0](x0, *(popt[0]-popt_err[0])), y2=f[0](x0, *(popt[0]+popt_err[0])), color='lightblue', alpha=0.3)
         plt.plot(x, f[0](x, *popt[0]), color='lightblue', label=f"scaling first step: a = {popt[0][0]:.2e} $\pm$ {popt_err[0][0]:.2e}")
     except Exception as e:
-        # logger information
         self.logger.info(f"Plotting first fit wasn't successful!")
         self.logger.debug('The following error occurred in plot_distance: '+str(e))
 
@@ -256,21 +257,18 @@ def plot_distance(self):
             # plot shifted results
             plt.plot(self.x_N[idx_N0:]-self.d['N0'], mean[idx_N0:], color='darkorange', linestyle='None', markersize=5, marker='o', label=f"shifted second step {w[self.d['f_estimate']]} with {self.d['povm_name']}")
 
-            plt.fill_between(x, y1=f[1](x, *(popt[1]-popt_err[1])), y2=f[1](x, *(popt[1]-popt_err[1])), color='bisque', alpha=0.3)
-            plt.plot(x, f[1](x, *popt[1]), color='bisque', label=f"scaling shifted second step: a = {popt[1][0]:.2e} $\pm$ {popt_err[1][0]:.2e}")
+            self.logger.debug(f"{popt[1]}{popt_err[1]}")
+            plt.fill_between(x, y1=f[1](x+self.d['N0'], *(popt[1]-popt_err[1])), y2=f[1](x+self.d['N0'], *(popt[1]+popt_err[1])), color='bisque', alpha=0.3)
+            plt.plot(x, f[1](x+self.d['N0'], *popt[1]), color='bisque', label=f"scaling shifted second step: a = {popt[1][0]:.2e} $\pm$ {popt_err[1][0]:.2e}")
     except Exception as e:
-        # logger information
         self.logger.info(f"Plotting second fit wasn't successful!")
         self.logger.debug('The following error occurred in plot_distance: '+str(e))
 
     # plot average
     try:
-        # fit and plot overall curve
-        a_avg, A_avg, a_avg_err, A_avg_err = self.get_scaling()
-
-        plt.plot(x, f[0](x, a_avg, A_avg), color='red', linewidth=0.5, label=f"overall scaling: a {a_avg:.2e} $\pm$ {a_avg_err:.2e}")
+        a, A, a_err, A_err = self.get_scaling()
+        plt.plot(x, f[0](x, a[2], A[2]), color='red', linewidth=0.5, label=f"overall scaling: a {a[2]:.2e} $\pm$ {a_err[2]:.2e}")
     except Exception as e:
-        # logger information
         self.logger.info(f"Plotting average fit wasn't successful!")
         self.logger.debug('The following error occurred in plot_distance: '+str(e))
 
@@ -279,11 +277,83 @@ def plot_distance(self):
     plt.xscale('log')
     plt.yscale('log')
     plt.xlim(self.x_N[0], self.x_N[-1])
-    # plt.xlim(self.x_N[idx_N0], self.x_N[-1])
-    # plt.ylim(1e-03, 1e-02)
     plt.legend()
 
     plt.savefig(self.path+'plots/dist_'+self.name+'.png', format='png', dpi=300)
+
+
+def plot_distance2(self, n=0):
+    '''
+    Plots distance for OneStepTomography and TwoStepTomography2.
+
+    :param n: integer for disregarding the first n measurement points
+    '''
+    # initialize plot
+    plt.figure(figsize=(12, 9))
+    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.d['f_sample']]} states")
+
+    # calculate mean
+    mean = np.mean(self.get_distances(), axis=0, where=self.get_valids())
+    std  = np.std(self.get_distances(), axis=0, where=self.get_valids())
+
+    # plot measurement data
+    plt.plot(self.x_N, mean, color='navy', linestyle='None', markersize=5, marker='o', label=f"{w[self.d['f_estimate']]}")
+
+    f, popt, popt_err = self.calculate_fitparam(n=n)
+    x = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), 100, dtype=np.int)
+    try:
+        plt.fill_between(x, y1=f(x, *(popt-popt_err)), y2=f(x, *(popt+popt_err)), color='lightblue', alpha=0.3)
+        plt.plot(x, f(x, *popt), color='lightblue', label=f"scaling: a = {popt[0]:.2e} $\pm$ {popt_err[0]:.2e}")
+    except Exception as e:
+        self.logger.info(f"Plotting fit wasn't successful!")
+        self.logger.debug('The following error occurred in plot_distance2: '+str(e))
+
+    plt.xlabel(r'$N$')
+    plt.ylabel(f"{w[self.d['f_distance']]}")
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim(self.x_N[0], self.x_N[-1])
+    plt.legend()
+
+    plt.savefig(self.path+'plots/dist_'+self.name+'.png', format='png', dpi=300)
+
+
+def compare_distance_osc(self, criteria_1, criteria_2):
+    '''
+    Compares up to four different Tomography schemes based on up to two criteria in one plot.
+
+    :param criteria_1: first criteria need to be consideread, same order as self.tomo_list
+    :param criteria_2: second criteria need to be considered, same order as self.tomo_list
+    '''
+    # initialize plot
+    plt.figure(figsize=(12, 9))
+    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.d['f_sample']]} states")
+
+    c = [['navy', 'lightblue'], ['forestgreen', 'lightgreen'], ['red', 'lightsalmon'], ['black', 'grey'], ['peru', 'sandybrown'], ['darkorange', 'bisque']]
+    for idx, tomo in enumerate(self._list):
+
+        # calculate mean
+        mean = np.mean(tomo.get_distances(), axis=0, where=tomo.get_valids())
+        std  = np.std(tomo.get_distances(), axis=0, where=tomo.get_valids())
+
+        # plot both steps
+        plt.plot(tomo.x_N, mean, color=c[idx][0], linestyle='None', markersize=5, marker='o', label=fr"{w[tomo.d['f_estimate']]} with {criteria_1[idx]} and {criteria_2[idx]}")
+
+        # fit and plot overall curve
+        f = lambda x, a, A: A*x**a
+        a, A, a_err, _ = tomo.get_scaling()
+
+        x  = np.logspace(np.log10(tomo.d['N_min']), np.log10(tomo.d['N_max']), 100, dtype=np.float)
+        plt.plot(x, f(x, a, A), color=c[idx][1], linewidth=1, label=f"scaling: a {a:.2e} $\pm$ {a_err:.2e}")
+
+    plt.xlabel(r'$N$')
+    plt.ylabel(f"{w[self.d['f_distance']]}")
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim((np.min(self.get_N_min()), self.d['N_max']))
+    plt.legend()
+
+    plt.savefig(self.path+'plots/comp_'+self.name+'.png', format='png', dpi=300)
 
 
 def compare_distance(self, criteria_1, criteria_2):
@@ -314,15 +384,14 @@ def compare_distance(self, criteria_1, criteria_2):
         try:
             # fit and plot overall curve
             f = lambda x, a, A: A*x**a
-            a_avg, A_avg, a_avg_err, A_avg_err = tomo.get_scaling()
+            a, A, a_err, A_err = tomo.get_scaling()
+            a, A, a_err, A_err = a[-1], A[-1], a_err[-1], A_err[-1]
 
             x  = np.logspace(np.log10(tomo.d['N_min']), np.log10(tomo.d['N_max']), 100, dtype=np.int32)
-            plt.plot(x, f(x, a_avg, A_avg), color=c[idx][1], linewidth=1, label=f"overall scaling: a {a_avg:.2e} $\pm$ {a_avg_err:.2e}")
+            plt.plot(x, f(x, a, A), color=c[idx][1], linewidth=1, label=f"overall scaling: a {a:.2e} $\pm$ {a_err:.2e}")
 
-            # logger information
             self.logger.info(f"Plotting fit was successful!")
         except Exception as e:
-            # logger information
             self.logger.info(f"Plotting fit wasn't successful!")
             self.logger.debug('The following error occurred in compare_distance: '+str(e))
 
@@ -337,71 +406,96 @@ def compare_distance(self, criteria_1, criteria_2):
     plt.savefig(self.path+'plots/comp_'+self.name+'.png', format='png', dpi=300)
 
 
-def plot_alpha_dependency(self, error=False):
+def plot_a_dependency1(self, error=False):
     '''
     Plots the alpha dependency of the scaling.
     '''
     plt.figure(figsize=(12,9))
-    plt.title(r'$\alpha$-dependency of second step scaling in TST')
+    plt.title(r'$\alpha$-dependency of the scaling in TST1')
 
     if error:
-        plt.fill_between(self.x_alpha, y1=self._a[0]-self._a_err[0], y2=self._a[0]+self._a_err[0], color='navy', alpha=0.3)
-        plt.fill_between(self.x_alpha, y1=self._a[1]-self._a_err[1], y2=self._a[1]+self._a_err[1], color='forestgreen', alpha=0.3)
-        plt.fill_between(self.x_alpha, y1=self._a[2]-self._a_err[2], y2=self._a[2]+self._a_err[2], color='red', alpha=0.3)
+        plt.fill_between(self.x_alpha, y1=self._a[:,0]-self._a_err[:,0], y2=self._a[:,0]+self._a_err[:,0], color='navy', alpha=0.3)
+        plt.fill_between(self.x_alpha, y1=self._a[:,1]-self._a_err[:,1], y2=self._a[:,1]+self._a_err[:,1], color='forestgreen', alpha=0.3)
+        plt.fill_between(self.x_alpha, y1=self._a[:,2]-self._a_err[:,2], y2=self._a[:,2]+self._a_err[:,2], color='red', alpha=0.3)
 
-    plt.plot(self.x_alpha, self._a[0], marker='o', markersize=5, color='navy', label=r'$a_0$')
-    plt.plot(self.x_alpha, self._a[1], marker='o', markersize=5, color='forestgreen', label=r'$a_1$')
-    plt.plot(self.x_alpha, self._a[2], marker='o', markersize=5, color='red', label=r'$a_{avg}$')
+    plt.plot(self.x_alpha, self._a[:,0], marker='o', markersize=5, color='navy', label=r'$a_0$')
+    plt.plot(self.x_alpha, self._a[:,1], marker='o', markersize=5, color='forestgreen', label=r'$a_1$')
+    plt.plot(self.x_alpha, self._a[:,2], marker='o', markersize=5, color='red', label=r'$a_{avg}$')
 
-    # x     = np.linspace(self.d['alpha_min'], self.d['alpha_max'], 100)
-    # plt.plot(x, 2*x-1/2-1, color='orange', label=r'$\alpha+a_0-1$')
-
-    plt.axhline(-1, color='grey', linewidth=0.5)
-    plt.axvline(2/3, color='grey', linewidth=0.5)
     plt.xlim(np.min(self.x_alpha), np.max(self.x_alpha))
     plt.ylabel(r'exponent $a$')
     plt.xlabel(r'$\alpha$')
     plt.legend()
 
-    plt.savefig(self.path+'plots/alpha_'+self.name+'.png', format='png',dpi=300)
+    plt.savefig(self.path+'plots/alpha_scaling_'+self.name+'.png', format='png',dpi=300)
 
 
-def plot_aA_dependency(self):
+def plot_A_dependency1(self, error):
+    '''
+    Plots the alpha dependency of the intercept.
+    '''
+    plt.figure(figsize=(12,9))
+    plt.title(r'$\alpha$-dependency of the intercept in TST1')
+
+    if error:
+        plt.fill_between(self.x_alpha, y1=self._A[:,2]-self._A_err[:,2], y2=self._A[:,2]+self._A_err[:,2], color='red', alpha=0.3)
+
+    plt.plot(self.x_alpha, self._A[:,2], marker='o', markersize=5, color='red', label=r'$A_{avg}$')
+
+    plt.xlabel(r'$\alpha$')
+    plt.ylabel(r'intercept $A$')
+    plt.xlim(np.min(self.x_alpha), np.max(self.x_alpha))
+    plt.legend()
+
+    plt.savefig(self.path+'plots/alpha_intercept_'+self.name+'.png', format='png',dpi=300)
+
+
+def plot_a_dependency2(self, error=False):
     '''
     Plots the alpha dependency of the scaling.
     '''
-    fig, ax1 = plt.subplots(figsize=(12,9))
-    fig.suptitle(r'$\alpha$-dependency of second step scaling in TST')
-    ax2 = ax1.twinx()
+    plt.figure(figsize=(12,9))
+    plt.title(r'$\alpha$-dependency of the scaling in TST2')
 
-    ax1.set_xlabel(r'$\alpha$')
-    ax1.set_xlim(np.min(self.x_alpha), np.max(self.x_alpha))
+    if error:
+        plt.fill_between(self.x_alpha, y1=self._a-self._a_err, y2=self._a+self._a_err, color='lightblue', alpha=0.3)
+    plt.plot(self.x_alpha, self._a, marker='o', markersize=5, color='navy', label=r'$a$')
 
-    leg1, = ax1.plot(self.x_alpha, self._a[0], marker='o', markersize=5, color='navy', label=r'$a_0$')
-    ax1.fill_between(self.x_alpha, y1=self._a[0]-self._a_err[0], y2=self._a[0]+self._a_err[0], color='navy', alpha=0.3)
+    if self.d['f_N0']==general.N_exp:
+        plt.axhline(-5/6, color='grey', linewidth=0.5)
+        plt.axvline(2/3, color='grey', linewidth=0.5)
+    elif self.d['f_N0']==general.N_frac:
+        plt.axhline(-1, color='grey', linewidth=0.5)
+        plt.axvline(1/2, color='grey', linewidth=0.5)
 
-    leg2, = ax1.plot(self.x_alpha, self._a[1], marker='o', markersize=5, color='forestgreen', label=r'$a_1$')
-    # ax1.fill_between(self.x_alpha, y1=self._a[1]-self._a_err[1], y2=self._a[1]+self._a_err[1], color='forestgreen', alpha=0.3)
+    plt.xlim(np.min(self.x_alpha), np.max(self.x_alpha))
+    plt.ylabel(r'exponent $a$')
+    plt.xlabel(r'$\alpha$')
+    plt.legend()
 
-    leg3, = ax1.plot(self.x_alpha, self._a[2], marker='o', markersize=5, color='red', label=r'$a_{avg}$')
-    ax1.fill_between(self.x_alpha, y1=self._a[2]-self._a_err[2], y2=self._a[2]+self._a_err[2], color='red', alpha=0.3)
-
-    ax1.axhline(-1, color='grey', linewidth=0.5)
-    ax1.axvline(2/3, color='grey', linewidth=0.5)
-    ax1.set_ylabel(r'exponent $a$')
-
-    # x     = np.linspace(self.d['alpha_min'], self.d['alpha_max'], 100)
-    # leg2, = ax1.plot(x, 2*x-1/2-1, color='orange', label=r'$\alpha+a_0-1$')
-
-    leg4, = ax2.plot(self.x_alpha, self._A[2], marker='o', markersize=5, color='darkred', label=r'$A_{avg}$')
-    # ax2.fill_between(self.x_alpha, y1=self._A[2]-self._A_err[2], y2=self._A[2]+self._A_err[2], color='darkred', alpha=0.3)
-    ax2.set_ylabel(r'prefactor $A$')
-
-    plt.legend(handles=[leg1, leg2, leg3])
-    # plt.legend(handles=[leg1, leg2, leg3, leg4])
+    plt.savefig(self.path+'plots/alpha_scaling_'+self.name+'.png', format='png',dpi=300)
 
 
-    plt.savefig(self.path+'plots/alpha_'+self.name+'.png', format='png',dpi=300)
+def plot_A_dependency2(self, error=False):
+    '''
+    Plots the alpha dependency of the intercept.
+    '''
+    plt.figure(figsize=(12,9))
+    plt.title(r'$\alpha$-dependency of the intercept in TST2')
+
+    if error:
+        plt.fill_between(self.x_alpha, y1=self._A-self._A_err, y2=self._A+self._A_err, color='lightblue', alpha=0.3)
+    plt.plot(self.x_alpha, self._A, marker='o', markersize=5, color='navy', label=r'$a_0$')
+
+    if self.d['f_N0']==general.N_frac:
+        plt.axvline(1/2, color='grey', linewidth=0.5)
+
+    plt.xlabel(r'$\alpha$')
+    plt.ylabel(r'intercept $A$')
+    plt.xlim(np.min(self.x_alpha), np.max(self.x_alpha))
+    plt.legend()
+
+    plt.savefig(self.path+'plots/alpha_intercept_'+self.name+'.png', format='png',dpi=300)
 
 
 def plot_validity(self):
