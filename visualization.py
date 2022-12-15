@@ -21,8 +21,10 @@ w = {}
 
 # f_sample
 w[pure.sample_unitary]    = 'pure'
-w[mixed.sample_bures]         = 'mixed'
-w[mixed.sample_hilbert]       = 'mixed'
+w[mixed.sample_bures]     = 'mixed'
+w[mixed.sample_hilbert]   = 'mixed'
+w[pure.sample_product_unitary] = 'pure'
+
 
 # f_estimate
 w[mle.iterative]      = 'MLE'
@@ -31,9 +33,9 @@ w[inversion.linear]   = 'LI'
 w[inversion.two_step] = 'two step LI'
 
 # f_distance
-w[general.euclidean_dist] = 'Euclidean distance'
-w[general.hilbert_dist]   = 'Hilbert Schmidt distance'
-w[general.infidelity]     = 'infidelity'
+w[general.euclidean_dist]  = 'Euclidean distance'
+w[general.hilbert_dist]    = 'Hilbert Schmidt distance'
+w[general.infidelity]      = 'infidelity'
 
 
 def qubit(points=np.array([None]), vectors=np.array([None]), states=np.array([None]), kind='point', angles=[-60, 30]):
@@ -176,7 +178,7 @@ def expectation_distribution(rho, n_bins=10):
 
 def eigenvalue_distribution(f_sample, N):
     '''
-    Visualizes the eigenvalue distribution of a given array of states.
+    Visualizes the eigenvalue distribution of an array of states.
 
     :param rho   : array of states in density represnetation
     :param n_bins: number of bins
@@ -208,6 +210,29 @@ def eigenvalue_distribution(f_sample, N):
     plt.xlabel('eigenvalue')
     plt.ylabel(r'$P$')
     plt.xlim(0, 1)
+    plt.legend()
+
+    plt.show()
+
+
+def purity_distribution(rhos: dict):
+    '''
+    Visualizes the purity distribution of the given states.
+
+    :param rhos: dictionary
+        rhos["description"] = Nxdxd array of states
+    :return:
+    '''
+    plt.figure(figsize=(15, 9))
+    plt.title('Purity distribution')
+
+    for key in rhos.keys():
+        rhos_red = general.partial_trace(rhos[key], 0)
+        plt.hist(np.real(general.purity(rhos_red)), int(np.sqrt(len(rhos_red))), density=False, color='navy', alpha=0.3, label=key)
+
+    plt.xlabel('purity')
+    plt.ylabel(r'$P$')
+    plt.xlim(1/2, 1)
     plt.legend()
 
     plt.show()
@@ -506,7 +531,7 @@ def plot_validity(self):
     plt.title(f"Invalidity distribution of estimates")
 
     height = np.sum(np.logical_not(self._valids), axis=0)
-    plt.imshow(self._valids, cmap=colors.ListedColormap(['red', 'green']), alpha=0.4, aspect='auto')
+    plt.imshow(self._valids, cmap=colors.ListedColormap(['red', 'green']), vmin=0, vmax=1, alpha=0.4, aspect='auto')
     plt.plot(np.arange(0, self.d['N_ticks']), height, marker='o', markersize=5, color='red', label='number of invalids')
 
     plt.ylabel(r'index $N_{mean}$ axis/ total numbe of invalids')
@@ -524,7 +549,8 @@ def speed_comparison(title, iterations=10, **kwargs):
 
     :param title     : title of the plot
     :param iterations: number of iterations the test function is tested
-    :param **kwargs  : dictionary like objekt of the form "name = (func, list of parameters)"
+    :param **kwargs  : dictionary
+        d[name] = (func, list of parameters)
     :return:
     '''
     data = speed.compare(iterations=10, **kwargs)
