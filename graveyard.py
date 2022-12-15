@@ -419,7 +419,7 @@ def __init__(self, name, path, new, debug, d):
 
         self.d         = d
         self.x_N  = np.logspace(np.log10(self.d['N'][0]), np.log10(self.d['N'][1]), self.d['N'][2], dtype=np.int)
-        self.povm = const.povm[self.d['povm_name']]
+        self.povm = general.povm[self.d['povm_name']]
 
         self._originals = None
         self._estimates = np.empty((self.d['N_mean'], self.d['N'][2], self.d['dim'], self.d['dim']), dtype=np.complex)
@@ -479,7 +479,7 @@ def __init__(self, name, path, new, debug):
         self.mirror  = mirror
 
         self.povm_name  = povm_name
-        self.povm       = const.povm[self.povm_name]
+        self.povm       = general.povm[self.povm_name]
         self.f_sample   = f_sample
         self.f_estimate = f_estimate
         self.f_distance = f_distance
@@ -570,6 +570,23 @@ elif popt_0[0]!=None and popt_1[1]!=None:
         popt_2[1] = popt_0[1]
         popt_2_err[0] = np.sqrt( (1/(np.log(self.d['N_max'])*popt_1[1]) * popt_1_err[1])**2 + (1/(np.log(self.d['N_max'])*popt_0[1]) * popt_0_err[1])**2 + (np.log(self.d['N_max'] - self.d['N0'])/np.log(self.d['N_max']) * popt_1_err[0])**2 )
         popt_2_err[1] = popt_0_err[1]
+
+
+def realign_povm(M: np.array, phi: np.float, theta: np.float, mirror=True):
+    '''
+    Rotates the set of POVM by the given angles.
+
+    :param M    : Nxdxd array of set of POVMs
+    :param phi  : polar angle
+    :param theta: angular angle
+    :return: Nxdxd realigned POVMs
+    '''
+    if mirror:
+        R = Rz(np.array([-phi-np.pi]))@Ry(np.array([np.pi-theta]))
+        return R@M@H(R)
+    else:
+        R = Rz(np.array([-phi]))@Ry(np.array([theta]))
+        return R@M@H(R)
 
 
 # tst.update_param('dim', 2)

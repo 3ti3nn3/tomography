@@ -35,11 +35,5 @@ sic[1] = 1/2*stateSic[1][:,None]@np.conjugate(stateSic[1][None,:])
 sic[2] = 1/2*stateSic[2][:,None]@np.conjugate(stateSic[2][None,:])
 sic[3] = 1/2*stateSic[3][:,None]@np.conjugate(stateSic[3][None,:])
 
-# dictionary of all povms
-povm = {}
-povm['Pauli-4']  = pauli4
-povm['Pauli-6']  = pauli6
-povm['SIC-POVM'] = sic
-
 # Pauli string POVM
 string1d = np.array([se/2, sx/2, sy/2, sz/2])

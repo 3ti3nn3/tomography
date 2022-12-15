@@ -15,7 +15,7 @@ def sample_hilbert(dim: int, N: int):
     AH = np.transpose(np.conjugate(A), axes=[0, 2, 1])
 
     B   = A@AH
-    rho = np.multiply(1/np.trace(B, axis1=-2, axis2=-1)[:, None, None].repeat(2, axis=1).repeat(2, axis=2), B)
+    rho = np.multiply(1/np.trace(B, axis1=-2, axis2=-1)[:, None, None].repeat(dim, axis=1).repeat(dim, axis=2), B)
 
     if rho.shape[0]==1:
         return rho[0]
@@ -42,4 +42,4 @@ def sample_bures(dim: int, N: int):
     if rho.shape[0]==1:
         return rho[0]/np.trace(rho[0])
     else:
-        return np.multiply(1/np.trace(rho, axis1=-2, axis2=-1)[:, None, None].repeat(2, axis=1).repeat(2, axis=2), rho)
+        return np.multiply(1/np.trace(rho, axis1=-2, axis2=-1)[:, None, None].repeat(dim, axis=1).repeat(dim, axis=2), rho)

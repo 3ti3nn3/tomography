@@ -71,9 +71,7 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=False, mirror=Tru
     if N<=N0:
         return rho_0
     else:
-        _, phi, theta = general.extract_param(rho_0)
-
-        M1    = general.realign_povm(M0, phi, theta, mirror=mirror)
+        M1    = general.realign_povm(rho_0, M0, mirror=mirror)
         N1    = int(N-N0)
         D1    = simulate.measure(rho, N1, M1)
         rho_1 = linear(D1, M1)

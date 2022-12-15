@@ -48,7 +48,7 @@ class OneStepTomography(Tomography):
 
             # initialize other attributes
             self.x_N  = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), self.d['N_ticks'], dtype=np.int)
-            self.povm = const.povm[self.d['povm_name']]
+            self.povm = general.povm[self.d['povm_name']]
 
             # initialize storage for results
             self._originals = None
@@ -117,6 +117,8 @@ class OneStepTomography(Tomography):
         except Exception as e:
             self.logger.info("Extracting parameters of overall scaling wasn't successful")
             self.logger.debug('The following error occurred in calculate_fitparam: '+str(e))
+            popt     = [None, None]
+            popt_err = [None, None]
 
         return f, popt, popt_err
 

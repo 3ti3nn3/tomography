@@ -3,6 +3,7 @@ from tomography import Comparison
 from scipy.optimize import curve_fit
 import numpy as np
 import pickle
+import general
 import check
 import const
 import inversion
@@ -58,7 +59,7 @@ class TwoStepTomography1(Tomography):
                 x0       = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N0']), 4, dtype=np.int)
                 x1       = self.d['N0'] + np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']-self.d['N0']), self.d['N_ticks']-4, dtype=np.int)
             self.x_N = np.concatenate((x0, x1))
-            self.povm    = const.povm[self.d['povm_name']]
+            self.povm    = general.povm[self.d['povm_name']]
 
             # initialize storage for results
             self._originals = None
@@ -222,7 +223,7 @@ class TwoStepTomography2(Tomography):
 
             # initialize other attributes
             self.x_N     = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), self.d['N_ticks'], dtype=np.int)
-            self.povm    = const.povm[self.d['povm_name']]
+            self.povm    = general.povm[self.d['povm_name']]
 
             # initialize storage for results
             self._originals = None
@@ -409,7 +410,7 @@ class TwoStepAlpha1(Tomography):
             assert all(notNone), 'Not all necessary parameters were initialized.'
 
             # initialize other attributes
-            self.povm    = const.povm[self.d['povm_name']]
+            self.povm    = general.povm[self.d['povm_name']]
             self.x_alpha = np.linspace(self.d['alpha_min'], self.d['alpha_max'], self.d['alpha_ticks'], endpoint=False, dtype=np.float)
 
             # initialize list where model will be stored in
@@ -518,7 +519,7 @@ class TwoStepAlpha2(Tomography):
             assert all(notNone), 'Not all necessary parameters were initialized.'
 
             # initialize other attributes
-            self.povm    = const.povm[self.d['povm_name']]
+            self.povm    = general.povm[self.d['povm_name']]
             self.x_alpha = np.linspace(self.d['alpha_min'], self.d['alpha_max'], self.d['alpha_ticks'], endpoint=False, dtype=np.float)
 
             # initialize list where model will be stored in

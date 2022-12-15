@@ -3,7 +3,7 @@ import numpy.linalg as LA
 import general
 
 
-def state(rho: np.array, prec=1e-14):
+def state(rho: np.array, prec=1e-12):
     '''
     Checks whether a given state is a valid state.
 
@@ -11,11 +11,11 @@ def state(rho: np.array, prec=1e-14):
     :param prec: precision of comparisons
     :return: boolean
     '''
-    bool_pos   = np.all(LA.eig(rho)[0]>=-prec)
-    bool_trace = np.abs(np.trace(rho)-1<prec)
-    bool_herm  = np.sum(np.abs(rho-general.H(rho)))<prec
+    is_pos   = np.all(LA.eig(rho)[0]>=-prec)
+    is_trace = np.abs(np.trace(rho)-1)<prec
+    is_herm  = np.sum(np.abs(rho-general.H(rho)))<prec
 
-    return bool_pos and bool_trace and bool_herm
+    return is_pos and is_trace and is_herm
 
 
 def purity(rhos: np.array, prec=1e-15):
@@ -24,7 +24,7 @@ def purity(rhos: np.array, prec=1e-15):
 
     :param rhos: Nxdxd array of density matrices
     :param prec: precision of the purity comparison
-    :return: boolean 
+    :return: boolean
     '''
     # compute purity
     purity = np.trace(rhos@rhos, axis1=-2, axis2=-1, dtype=complex)
