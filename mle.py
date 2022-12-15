@@ -31,7 +31,8 @@ def iterative(D: np.array, M: np.array):
         update = R@rho_1@R
         rho_1  = update/np.trace(update)
 
-        dist  = general.infidelity(rho_1, rho_2)
+        if j>=40 and j%20==0:
+            dist  = general.infidelity(rho_1, rho_2)
         rho_2 = rho_1
 
         j += 1
@@ -64,6 +65,9 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=True, mirror=True
     :param mirror: align or antialign
     :return: dxd array of adaptive mle estimator
     '''
+    # initial constants
+    dim = rho.shape[-1]
+
     # initial estimate
     D0    = simulate.measure(rho, np.minimum(N, N0), M0)
     rho_0 = iterative(D0, M0)
@@ -72,12 +76,11 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=True, mirror=True
         return rho_0
     else:
         # rallignment according to initial estimate
-        _, phi, theta = general.extract_param(rho_0)
-        M1    = general.realign_povm(M0, phi, theta, mirror=mirror)
+        M1 = general.realign_povm(rho_0, M0, mirror=mirror)
 
         # true state
-        N1    = int(N-N0)
-        D1    = simulate.measure(rho, N1, M1)
+        N1 = int(N-N0)
+        D1 = simulate.measure(rho, N1, M1)
 
         # final guess using previous data
         M_D0 = M0[D0]
@@ -89,8 +92,8 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=True, mirror=True
 
         iter_max = 500
         dist     = float(1)
-        rho_10   = np.eye(2)/2
-        rho_11   = np.eye(2)/2
+        rho_10   = np.eye(dim)/dim
+        rho_11   = np.eye(dim)/dim
 
         j = 0
         while j<iter_max and dist>1e-14:
@@ -99,7 +102,8 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=True, mirror=True
             update = R@rho_11@R
             rho_11  = update/np.trace(update)
 
-            dist   = general.infidelity(rho_10, rho_11)
+            if j>=40 and j%20==0:
+                dist  = general.infidelity(rho_10, rho_11)
             rho_10 = rho_11
 
             j += 1
