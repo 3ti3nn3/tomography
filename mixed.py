@@ -43,3 +43,35 @@ def sample_bures(dim: int, N: int):
         return rho[0]/np.trace(rho[0])
     else:
         return np.multiply(1/np.trace(rho, axis1=-2, axis2=-1)[:, None, None].repeat(dim, axis=1).repeat(dim, axis=2), rho)
+
+
+def sample_product_hilbert(dim: int, N: int):
+    '''
+    Samples product states using sample_hilbert. If dimension correspond to an even number
+    of qubits, a symmetric product state is generated. Elsewise a prodct state of one qubit
+    and the remaining qubits is generated.
+
+    :param dim: dimension
+    :param N  : number of states
+    :return: Nxdxd array of product states
+    '''
+    if np.log2(dim)%1==0:
+        return general.sample_product(int(np.sqrt(dim)), int(np.sqrt(dim)), N, sample_hilbert)
+    else:
+        return general.sample_product(2, int(np.sqrt(dim/2)), N, sample_hilbert)
+
+
+def sample_product_bures(dim: int, N: int):
+    '''
+    Samples product states using sample_hilbert. If dimension correspond to an even number
+    of qubits, a symmetric product state is generated. Elsewise a prodct state of one qubit
+    and the remaining qubits is generated.
+
+    :param dim: dimension
+    :param N  : number of states
+    :return: Nxdxd array of product states
+    '''
+    if np.log2(dim)%1==0:
+        return general.sample_product(int(np.sqrt(dim)), int(np.sqrt(dim)), N, sample_bures)
+    else:
+        return general.sample_product(2, int(np.sqrt(dim/2)), N, sample_bures)
