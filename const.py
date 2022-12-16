@@ -15,10 +15,8 @@ M5 = 1/6*np.array([[1, 1j], [-1j, 1]])
 M3 = 1/3*np.array([[1, 0], [0, 0]])
 M6 = 1/3*np.array([[0, 0], [0, 1]])
 
-# Pauli-4 POVM
+# Pauli POVM
 pauli4 = np.array([M1, M2, M3, np.eye(2)-M1-M2-M3])
-
-# Pauli-6 POVM
 pauli6 = np.array([M1, M4, M2, M5, M3, M6])
 
 # SIC-POVM states
@@ -37,3 +35,10 @@ sic[3] = 1/2*stateSic[3][:,None]@np.conjugate(stateSic[3][None,:])
 
 # Pauli string POVM
 string1d = np.array([se/2, sx/2, sy/2, sz/2])
+
+# Bell states
+bell = np.empty((4, 4), dtype=np.complex)
+bell[0] = 1/np.sqrt(2) * np.array([1, 0, 0, 1])
+bell[1] = 1/np.sqrt(2) * np.array([1, 0, 0, -1])
+bell[2] = 1/np.sqrt(2) * np.array([0, 1, 1, 0])
+bell[3] = 1/np.sqrt(2) * np.array([0, 1, -1, 0])
