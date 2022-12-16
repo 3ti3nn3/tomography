@@ -6,40 +6,7 @@ import const
 import check
 
 
-# rotation matrices
-def Rx(alpha):
-    '''
-    Calculates rotation matrix about x-axis.
-
-    :param alpha: rotation angle
-    :return: rotation matrix
-    '''
-    return np.transpose([[np.cos(alpha/2), -1j*np.sin(alpha/2)],
-                         [-1j*np.sin(alpha/2), np.cos(alpha/2)]], axes=[2, 0, 1])
-
-
-def Ry(theta):
-    '''
-    Calculates rotation matrix about x-axis.
-
-    :param theta: rotation angle
-    :return: rotation matrix
-    '''
-    return np.transpose([[np.cos(theta/2), -np.sin(theta/2)],
-                         [np.sin(theta/2), np.cos(theta/2)]], axes=[2, 0, 1])
-
-
-def Rz(phi):
-    '''
-    Calculates rotation matrix about x-axis.
-
-    :param phi: rotation angle
-    :return: rotation matrix
-    '''
-    return np.transpose([[np.exp(1j*phi/2, dtype=np.complex), np.zeros(len(phi), dtype=np.complex)],
-                         [np.zeros(len(phi), dtype=np.complex), np.exp(-1j*phi/2, dtype=np.complex)]], axes=[2, 0, 1])
-
-
+# general tools
 def H(rho: np.array):
     '''
     Calculates the conjugate transpose of an array of states or one single state.
@@ -53,6 +20,16 @@ def H(rho: np.array):
         return np.transpose(np.conjugate(rho), axes=[0, 2, 1])
     else:
         raise ValueError(f"Unexpected shape ({rho.shape}) of rho in 'general.H' encountered.")
+
+
+def purity(rho: np.array):
+    '''
+    Calculates the purity of an array of density matrices.
+
+    :param rho: Nxdxd or dxd array of density matrices
+    :return: purity
+    '''
+    return np.trace(rho@rho, axis1=-2, axis2=-1)
 
 
 def expect(operator: np.array, rho: np.array):
@@ -77,154 +54,6 @@ def expect_xyz(rho: np.array):
         return np.real([expect(const.sx, rho), expect(const.sy, rho), expect(const.sz, rho)]).T
     except:
         return np.real([expect(const.sx, rho), expect(const.sy, rho), expect(const.sz, rho)])
-
-
-def euclidean_dist(rho_1: np.array, rho_2: np.array):
-    '''
-    Calculates the euclidean distance.
-
-    :param rho_1: dxd array of density matrix
-    :param rho_2: dxd array of density matrix
-    :return: euclidean distance of the Bloch vectors
-    '''
-    bloch_1 = expect_xyz(rho_1)
-    bloch_2 = expect_xyz(rho_2)
-
-    return np.sqrt(np.sum((bloch_1-bloch_2)**2))
-
-
-def hilbert_dist(rho_1: np.array, rho_2: np.array):
-    '''
-    Calculates the Hilbert-Schmidt distance.
-
-    :param rho_1: dxd array of density matrix
-    :param rho_2: dxd array of density matrix
-    :return: Hilbert-Schmidt distance
-    '''
-    return np.real(np.trace((rho_1-rho_2)**2))
-
-
-def bures_dist(rho_1: np.array, rho_2: np.array):
-    '''
-    Calculates the Bures distance of the given states according to qutip.
-
-    :param rho_1: dxd array of density marix
-    :param rho_2: dxd array of density matrix
-    :return: fidelity
-    '''
-    Qrho_1 = qt.Qobj(rho_1)
-    Qrho_2 = qt.Qobj(rho_2)
-
-    return qt.bures_dist(Qrho_1, Qrho_2)
-
-
-def infidelity(rho_1: np.array, rho_2: np.array):
-    '''
-    Calculates the infidelity of two one qubit states according to Wikipedia.
-
-    :param rho_1: dxd array of density matrix
-    :param rho_2: dxd array of density matrix
-    :retur: infidelity
-    '''
-    if np.any(check.purity(np.array([rho_1, rho_2]))):
-        return 1-np.real(np.trace(rho_1@rho_2))
-    elif rho_1.shape[-1]==2:
-        return 1-np.real(np.trace(rho_1@rho_2) + 2*np.sqrt(LA.det(rho_1)*LA.det(rho_2)))
-    else:
-        return 1-np.real(np.trace(sqrtm(rho_1@rho_2))**2)
-
-
-def R_povm(phi: np.float, theta: np.float, mirror=True):
-    '''
-    Determines the rotation matrix for a rotation on the block sphere for the given angles.
-
-    :param phi  : polar angle
-    :param theta: azimutal angle
-    :return: 2x2 array of ration matrix
-    '''
-    if mirror:
-        return Rz(np.array([-phi-np.pi]))@Ry(np.array([np.pi-theta]))
-    else:
-        return Rz(np.array([-phi]))@Ry(np.array([theta]))
-
-
-def extract_param(rho: np.array):
-    '''
-    Determines the angles of rho's orientation and the distance r.
-
-    :param rho: dxd array of density matrix
-    :return: tuple of (r, phi, theta)
-    '''
-    n = expect_xyz(rho)
-
-    r     = np.sqrt(np.sum(n**2))
-    phi   = np.arctan2(n[1], n[0])
-    theta = np.arccos(n[2]/r)
-
-    return r, phi, theta
-
-
-def extract_angles(rho: np.array):
-    '''
-    Determines the angles of rho's orientation.
-
-    :param rho: 2x2 array of density matrix
-    :return: tuple of (phi, theta)
-    '''
-    n = expect_xyz(rho)
-
-    r     = np.sqrt(np.sum(n**2))
-    phi   = np.arctan2(n[1], n[0])
-    theta = np.arccos(n[2]/r)
-
-    return phi, theta
-
-
-def purity(rho: np.array):
-    '''
-    Calculates the purity of an array of density matrices.
-
-    :param rho: Nxdxd or dxd array of density matrices
-    :return: purity
-    '''
-    return np.trace(rho@rho, axis1=-2, axis2=-1)
-
-
-def N_exp(N_max: int, alpha: float):
-    '''
-    Calculates the exponential representation of N0 in two step adaptive scheme.
-
-    :param N_max: N_max
-    :param alpha: exponent
-    :return: N0
-    '''
-    return int(N_max**alpha)
-
-
-def N_frac(N_max: int, alpha: float):
-    '''
-    Calculates the fractional representation of N0. in the two step adaptive scheme.
-
-    :param N_max: N_max
-    :param alpha: fraction
-    :return: N0
-    '''
-    return int(N_max*alpha)
-
-
-def sample_product(dim1: int, dim2: int, N: int, f_sample):
-    '''
-    Samples product states according to f_sample function.
-
-    :param dim_1   : dimension of the first product state
-    :param dim_2   : dimension of the second product state
-    :param N       : number of states
-    :param f_sample: function from which the single product states are sampled from
-    :return: Nxdxd array of product states
-    '''
-    rhos_1, rhos_2 = f_sample(dim1, N), f_sample(dim2, N)
-
-    return tensorproduct(rhos_1, rhos_2)
 
 
 def partial_trace(rho: np.array, idx_qubit):
@@ -303,59 +132,143 @@ def tensorproduct(rhos_1: np.array, rhos_2: np.array):
         raise ValueError(f"Input has unexpected shape: {rhos_1.shape}, {rhos_2.shape}")
 
 
-# generalized standard povms
-def pauli4(dim: int):
+# rotation matrices
+def Rx(alpha):
     '''
-    Pauli-4 POVM for arbitrary dimension.
+    Calculates rotation matrix about x-axis.
 
-    :param dim: dimension
-    :return: Nxdxd array of POVM set
+    :param alpha: rotation angle
+    :return: rotation matrix
     '''
-    if dim==2:
-        return const.pauli4
-    elif dim==4:
-        idx_1, idx_2 = np.meshgrid(np.arange(4), np.arange(4))
-        idx_1, idx_2 = idx_1.flatten(), idx_2.flatten()
-        return tensorproduct(const.pauli4[idx_1], const.pauli4[idx_1])
+    return np.transpose([[np.cos(alpha/2), -1j*np.sin(alpha/2)],
+                         [-1j*np.sin(alpha/2), np.cos(alpha/2)]], axes=[2, 0, 1])
+
+
+def Ry(theta):
+    '''
+    Calculates rotation matrix about x-axis.
+
+    :param theta: rotation angle
+    :return: rotation matrix
+    '''
+    return np.transpose([[np.cos(theta/2), -np.sin(theta/2)],
+                         [np.sin(theta/2), np.cos(theta/2)]], axes=[2, 0, 1])
+
+
+def Rz(phi):
+    '''
+    Calculates rotation matrix about x-axis.
+
+    :param phi: rotation angle
+    :return: rotation matrix
+    '''
+    return np.transpose([[np.exp(1j*phi/2, dtype=np.complex), np.zeros(len(phi), dtype=np.complex)],
+                         [np.zeros(len(phi), dtype=np.complex), np.exp(-1j*phi/2, dtype=np.complex)]], axes=[2, 0, 1])
+
+
+# distance measures
+def euclidean_dist(rho_1: np.array, rho_2: np.array):
+    '''
+    Calculates the euclidean distance.
+
+    :param rho_1: dxd array of density matrix
+    :param rho_2: dxd array of density matrix
+    :return: euclidean distance of the Bloch vectors
+    '''
+    bloch_1 = expect_xyz(rho_1)
+    bloch_2 = expect_xyz(rho_2)
+
+    return np.sqrt(np.sum((bloch_1-bloch_2)**2))
+
+
+def hilbert_dist(rho_1: np.array, rho_2: np.array):
+    '''
+    Calculates the Hilbert-Schmidt distance.
+
+    :param rho_1: dxd array of density matrix
+    :param rho_2: dxd array of density matrix
+    :return: Hilbert-Schmidt distance
+    '''
+    return np.real(np.trace((rho_1-rho_2)**2))
+
+
+def bures_dist(rho_1: np.array, rho_2: np.array):
+    '''
+    Calculates the Bures distance of the given states according to qutip.
+
+    :param rho_1: dxd array of density marix
+    :param rho_2: dxd array of density matrix
+    :return: fidelity
+    '''
+    Qrho_1 = qt.Qobj(rho_1)
+    Qrho_2 = qt.Qobj(rho_2)
+
+    return qt.bures_dist(Qrho_1, Qrho_2)
+
+
+def infidelity(rho_1: np.array, rho_2: np.array):
+    '''
+    Calculates the infidelity of two one qubit states according to Wikipedia.
+
+    :param rho_1: dxd array of density matrix
+    :param rho_2: dxd array of density matrix
+    :retur: infidelity
+    '''
+    if np.any(check.purity(np.array([rho_1, rho_2]))):
+        return 1-np.real(np.trace(rho_1@rho_2))
+    elif rho_1.shape[-1]==2:
+        return 1-np.real(np.trace(rho_1@rho_2) + 2*np.sqrt(LA.det(rho_1)*LA.det(rho_2)))
     else:
-        raise ValueError(f"Dimension can be either 2 or 4, not {dim}.")
+        return 1-np.real(np.trace(sqrtm(rho_1@rho_2))**2)
 
-
-def pauli6(dim: int):
+# realignment process
+def R_povm(phi: np.float, theta: np.float, mirror=True):
     '''
-    Pauli-6 POVM for arbitrary dimension.
+    Determines the rotation matrix for a rotation on the block sphere for the given angles.
 
-    :param dim: dimension
-    :return: Nxdxd array of POVM set
+    :param phi  : polar angle
+    :param theta: azimutal angle
+    :return: 2x2 array of ration matrix
     '''
-    if dim==2:
-        return const.pauli6
-    elif dim==4:
-        idx_1, idx_2 = np.meshgrid(np.arange(6), np.arange(6))
-        idx_1, idx_2 = idx_1.flatten(), idx_2.flatten()
-        return tensorproduct(const.pauli6[idx_1], const.pauli6[idx_2])
+    if mirror:
+        return Rz(np.array([-phi-np.pi]))@Ry(np.array([np.pi-theta]))
     else:
-        raise ValueError(f"Dimension can be either 2 or 4, not {dim}.")
+        return Rz(np.array([-phi]))@Ry(np.array([theta]))
 
 
-def sic(dim: int):
+def extract_param(rho: np.array):
     '''
-    Pauli-6 POVM for arbitrary dimension.
+    Determines the angles of rho's orientation and the distance r.
 
-    :param dim: dimension
-    :return: Nxdxd array of POVM set
+    :param rho: dxd array of density matrix
+    :return: tuple of (r, phi, theta)
     '''
-    if dim==2:
-        return const.sic
-    elif dim==4:
-        idx_1, idx_2 = np.meshgrid(np.arange(4), np.arange(4))
-        idx_1, idx_2 = idx_1.flatten(), idx_2.flatten()
-        return tensorproduct(const.sic[idx_1], const.sic[idx_2])
-    else:
-        raise ValueError(f"Dimension can be either 2 or 4, not {dim}.")
+    n = expect_xyz(rho)
+
+    r     = np.sqrt(np.sum(n**2))
+    phi   = np.arctan2(n[1], n[0])
+    theta = np.arccos(n[2]/r)
+
+    return r, phi, theta
 
 
-def realign_povm(rho: np.array, M: np.array, mirror=True):
+def extract_angles(rho: np.array):
+    '''
+    Determines the angles of rho's orientation.
+
+    :param rho: 2x2 array of density matrix
+    :return: tuple of (phi, theta)
+    '''
+    n = expect_xyz(rho)
+
+    r     = np.sqrt(np.sum(n**2))
+    phi   = np.arctan2(n[1], n[0])
+    theta = np.arccos(n[2]/r)
+
+    return phi, theta
+
+
+def realign_rotation(rho: np.array, M: np.array, mirror=True):
     '''
     Rotates the set of POVM in the eigenbasis of rho.
 
@@ -378,10 +291,129 @@ def realign_povm(rho: np.array, M: np.array, mirror=True):
     return R@M@H(R)
 
 
+def realign_eigenbasis(rho: np.array, M: np.array, mirror=True):
+    '''
+    Transforms the POVM in the eigenbasis of rho.
+
+    :param rho   : dxd array of state
+    :param M     : Nxdxd array of set of POVMs
+    :param mirror: placeholder for reasons of generality
+    :return: Nxdxd realigned POVMs
+    '''
+    _, U = LA.eigh(rho)
+    return U@M@H(U)
+
+
+def realign_product_eigenbasis(rho: np.array, M: np.array, mirror=True):
+    '''
+    Transforms the POVM in the eigenbasis of its reduces components.
+
+    :param rho   : dxd array of state
+    :param M     : Nxdxd array of set of POVMs
+    :param mirror: placeholder for reasons of generality
+    :return: Nxdxd realigned POVMs
+    '''
+    pass
+    # n_qubits = int(np.log2(rho.shape[-1]))
+    #
+    # U_arr = np.empty((n_qubits, 2, 2), dtype=np.complex)
+    #
+    # for qubit in range(n_qubits):
+
+
+
+# N0-step representations
+def N_exp(N_max: int, alpha: float):
+    '''
+    Calculates the exponential representation of N0 in two step adaptive scheme.
+
+    :param N_max: N_max
+    :param alpha: exponent
+    :return: N0
+    '''
+    return int(N_max**alpha)
+
+
+def N_frac(N_max: int, alpha: float):
+    '''
+    Calculates the fractional representation of N0. in the two step adaptive scheme.
+
+    :param N_max: N_max
+    :param alpha: fraction
+    :return: N0
+    '''
+    return int(N_max*alpha)
+
+
+# product sampling
+def sample_product(dim1: int, dim2: int, N: int, f_sample):
+    '''
+    Samples product states according to f_sample function.
+
+    :param dim_1   : dimension of the first product state
+    :param dim_2   : dimension of the second product state
+    :param N       : number of states
+    :param f_sample: function from which the single product states are sampled from
+    :return: Nxdxd array of product states
+    '''
+    rhos_1, rhos_2 = f_sample(dim1, N), f_sample(dim2, N)
+
+    return tensorproduct(rhos_1, rhos_2)
+
+
+# product measurements
+def pauli4(dim: int):
+    '''
+    Pauli-4 POVM for arbitrary dimension.
+
+    :param dim: dimension
+    :return: Nxdxd array of POVM set
+    '''
+    assert np.log2(dim)%1==0, 'Dimension is not a power of 2.'
+    n_qubits = int(np.log2(dim))
+
+    idx = np.meshgrid(*np.repeat(np.arange(4)[None,], n_qubits, axis=0))
+    M   = const.pauli4[idx[0].flatten()]
+    for i in range(1, n_qubits):
+        M = tensorproduct(M, const.pauli4[idx[i].flatten()])
+    return M
+
+
+def pauli6(dim: int):
+    '''
+    Pauli-6 POVM for arbitrary dimension.
+
+    :param dim: dimension
+    :return: Nxdxd array of POVM set
+    '''
+    assert np.log2(dim)%1==0, 'Dimension is not a power of 2.'
+    n_qubits = int(np.log2(dim))
+
+    idx = np.meshgrid(*np.repeat(np.arange(6)[None,], n_qubits, axis=0))
+    M   = const.pauli6[idx[0].flatten()]
+    for i in range(1, n_qubits):
+        M = tensorproduct(M, const.pauli6[idx[i].flatten()])
+    return M
+
+
+def sic(dim: int):
+    '''
+    Pauli-6 POVM for arbitrary dimension.
+
+    :param dim: dimension
+    :return: Nxdxd array of POVM set
+    '''
+    assert np.log2(dim)%1==0, 'Dimension is not a power of 2.'
+    n_qubits = int(np.log2(dim))
+
+    idx = np.meshgrid(*np.repeat(np.arange(4)[None,], n_qubits, axis=0))
+    M   = const.sic[idx[0].flatten()]
+    for i in range(1, n_qubits):
+        M = tensorproduct(M, const.sic[idx[i].flatten()])
+    return M
+
+
 povm = {}
-povm['Pauli-4']  = pauli4(2)
-povm['Pauli-6']  = pauli6(2)
-povm['SIC-POVM'] = sic(2)
-povm['2Q Pauli-4']  = pauli4(4)
-povm['2Q Pauli-6']  = pauli6(4)
-povm['2Q SIC-POVM'] = sic(4)
+povm['Pauli-4']  = pauli4
+povm['Pauli-6']  = pauli6
+povm['SIC-POVM'] = sic
