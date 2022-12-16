@@ -59,7 +59,7 @@ class TwoStepTomography1(Tomography):
                 x0       = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N0']), 4, dtype=np.int)
                 x1       = self.d['N0'] + np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']-self.d['N0']), self.d['N_ticks']-4, dtype=np.int)
             self.x_N = np.concatenate((x0, x1))
-            self.povm    = general.povm[self.d['povm_name']]
+            self.povm    = general.povm[self.d['povm_name']](self.d['dim'])
 
             # initialize storage for results
             self._originals = None
@@ -223,7 +223,7 @@ class TwoStepTomography2(Tomography):
 
             # initialize other attributes
             self.x_N     = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), self.d['N_ticks'], dtype=np.int)
-            self.povm    = general.povm[self.d['povm_name']]
+            self.povm    = general.povm[self.d['povm_name']](self.d['dim'])
 
             # initialize storage for results
             self._originals = None
@@ -330,7 +330,7 @@ class TwoStepComparison(Comparison):
         # check comparison
         assert all([tst_ref.d['dim'] == tst.d['dim'] for tst in self._list]), 'Different dimension encountered. Comparison does not make sense!'
         assert all([tst_ref.d['N_max'] == tst.d['N_max'] for tst in self._list]), 'Different N_max encountered. Comparison does not make sense!'
-        assert all([tst_ref.d['f_sample'] == tst.d['f_sample'] for tst in self._list]), 'Different way of sampling encountered. Comparison does not make sense!'
+        # assert all([tst_ref.d['f_sample'] == tst.d['f_sample'] for tst in self._list]), 'Different way of sampling encountered. Comparison does not make sense!'
         assert all([tst_ref.d['f_distance'] == tst.d['f_distance'] for tst in self._list]), 'Different distance measures encountered. Comparison does not make sense!'
 
         self.d = {}
@@ -350,6 +350,9 @@ class TwoStepComparison(Comparison):
     def get_cup(self):
         return [tst.d['cup'] for tst in self._list]
 
+    def get_sample(self):
+        return [tst.d['f_sample'] for tst in self._list]
+
 
     def transform_citeria(self, criteria):
 
@@ -359,6 +362,7 @@ class TwoStepComparison(Comparison):
         data['alpha']      = [fr"$\alpha$ = {alpha}" for alpha in self.get_alpha()]
         data['mirror']     = ['aligned' if mirror else 'anti-aligned' for mirror in self.get_mirror()]
         data['cup']        = ["$D_0\cup D_1$" if cup else "$D_1$" for cup in self.get_cup()]
+        data['f_sample']   = [visualization.w[f_sample] for f_sample in self.get_sample()]
 
         return data[criteria]
 
@@ -410,7 +414,7 @@ class TwoStepAlpha1(Tomography):
             assert all(notNone), 'Not all necessary parameters were initialized.'
 
             # initialize other attributes
-            self.povm    = general.povm[self.d['povm_name']]
+            self.povm    = general.povm[self.d['povm_name']](self.d['dim'])
             self.x_alpha = np.linspace(self.d['alpha_min'], self.d['alpha_max'], self.d['alpha_ticks'], endpoint=False, dtype=np.float)
 
             # initialize list where model will be stored in
@@ -519,7 +523,7 @@ class TwoStepAlpha2(Tomography):
             assert all(notNone), 'Not all necessary parameters were initialized.'
 
             # initialize other attributes
-            self.povm    = general.povm[self.d['povm_name']]
+            self.povm    = general.povm[self.d['povm_name']](self.d['dim'])
             self.x_alpha = np.linspace(self.d['alpha_min'], self.d['alpha_max'], self.d['alpha_ticks'], endpoint=False, dtype=np.float)
 
             # initialize list where model will be stored in

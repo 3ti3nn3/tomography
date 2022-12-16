@@ -76,7 +76,7 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=True, mirror=True
         return rho_0
     else:
         # rallignment according to initial estimate
-        M1 = general.realign_povm(rho_0, M0, mirror=mirror)
+        M1 = general.transform_eigenbasis(rho_0, M0, mirror=mirror)
 
         # true state
         N1 = int(N-N0)

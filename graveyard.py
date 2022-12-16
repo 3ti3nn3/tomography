@@ -297,7 +297,7 @@ def two_step_mle(rho: np.array, M0: np.array, N: int, mirror=True, alpha=0.5):
 
     # rallignment accordning to initial estimate
     _, phi, theta = general.extract_param(rho_0)
-    M1    = general.realign_povm(M0, phi, theta, mirror=mirror)
+    M1    = general.transform_eigenbasis(M0, phi, theta, mirror=mirror)
 
     # true state
     N1    = int(N-N0)
@@ -419,7 +419,7 @@ def __init__(self, name, path, new, debug, d):
 
         self.d         = d
         self.x_N  = np.logspace(np.log10(self.d['N'][0]), np.log10(self.d['N'][1]), self.d['N'][2], dtype=np.int)
-        self.povm = general.povm[self.d['povm_name']]
+        self.povm = general.povm[self.d['povm_name']](self.d['dim'])
 
         self._originals = None
         self._estimates = np.empty((self.d['N_mean'], self.d['N'][2], self.d['dim'], self.d['dim']), dtype=np.complex)
@@ -436,7 +436,7 @@ def __init__(self, name, path, new, debug, d):
             except:
                 self.N = [int(1e02), ost.N_max, ost.N_ticks]
 
-            self.dim     = ost.dim
+            self.d['dim']     = ost.dim
             self.N_mean  = ost.N_mean
             self.x_N     = np.logspace(np.log10(self.N[0]), np.log10(self.N[1]), self.N[2], dtype=np.int)
 
@@ -471,7 +471,7 @@ def __init__(self, name, path, new, debug):
         assert all(notNone), 'Want to build up model from scratch but certain variables are not specified.'
         self.logger.info('Buildung from scratch.')
 
-        self.dim     = dim
+        self.d['dim']     = dim
         self.N       = N
         self.N_mean  = N_mean
         self.x_N     = np.logspace(np.log10(N[0]), np.log10(self.N[1]), self.N[2], dtype=np.int)
@@ -479,13 +479,13 @@ def __init__(self, name, path, new, debug):
         self.mirror  = mirror
 
         self.povm_name  = povm_name
-        self.povm       = general.povm[self.povm_name]
+        self.povm       = general.povm[self.povm_name](self.d['dim'])
         self.f_sample   = f_sample
         self.f_estimate = f_estimate
         self.f_distance = f_distance
 
         self._originals = None
-        self._estimates = np.empty((self.N_mean, self.N[2], self.dim, self.dim), dtype=np.complex)
+        self._estimates = np.empty((self.N_mean, self.N[2], self.d['dim'], self.d['dim']), dtype=np.complex)
         self._valids    = np.ones((self.N_mean, self.N[2]), dtype=bool)
         self._distances = np.empty((self.N_mean, self.N[2]), dtype=np.float)
 
@@ -498,7 +498,7 @@ def __init__(self, name, path, new, debug):
             self.N = tst.N
         except:
             self.N = [int(1e02), tst.N_max, tst.N_ticks]
-        self.dim     = tst.dim
+        self.d['dim']     = tst.dim
         self.N_mean  = tst.N_mean
         self.x_N     = np.logspace(np.log10(self.N[0]), np.log10(self.N[1]), self.N[2], dtype=np.int)
         self.alpha   = tst.alpha
@@ -572,7 +572,7 @@ elif popt_0[0]!=None and popt_1[1]!=None:
         popt_2_err[1] = popt_0_err[1]
 
 
-def realign_povm(M: np.array, phi: np.float, theta: np.float, mirror=True):
+def transform_eigenbasis(M: np.array, phi: np.float, theta: np.float, mirror=True):
     '''
     Rotates the set of POVM by the given angles.
 

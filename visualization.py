@@ -23,8 +23,9 @@ w = {}
 w[pure.sample_unitary]    = 'pure'
 w[mixed.sample_bures]     = 'mixed'
 w[mixed.sample_hilbert]   = 'mixed'
-w[pure.sample_product_unitary] = 'pure'
-
+w[pure.sample_product_unitary]  = 'pure product'
+w[mixed.sample_product_bures]   = 'mixed product'
+w[mixed.sample_product_hilbert] = 'mixed product'
 
 # f_estimate
 w[mle.iterative]      = 'MLE'
@@ -89,7 +90,7 @@ def qubit_3(rho_0: (str, np.array), rho_1=(None, np.array([None])), rho_2=(None,
     b              = qt.Bloch()
     b.point_marker = 'o'
     b.point_color  = np.concatenate((np.repeat('red', len(rho_1[1])-1), np.repeat('violet', len(rho_2[1])-1))).tolist()
-    b.vector_color = ['blue', 'red', 'violet']
+    b.vector_color = ['blue', *np.repeat('red', len(rho_1[1])), *np.repeat('violet', len(rho_2[1]))]
     b.vector_width = 2
     b.point_size   = [10]
     b.view         = angles
@@ -102,7 +103,8 @@ def qubit_3(rho_0: (str, np.array), rho_1=(None, np.array([None])), rho_2=(None,
         for i in range(len(rho_1[1])-1):
             rho = rho_1[1][i]
             pnt = general.expect_xyz(rho)
-            b.add_points(pnt)
+            # b.add_points(pnt)
+            b.add_vectors(pnt)
 
         rho = rho_1[1][-1]
         vec = general.expect_xyz(rho)
@@ -114,7 +116,8 @@ def qubit_3(rho_0: (str, np.array), rho_1=(None, np.array([None])), rho_2=(None,
         for i in range(len(rho_2[1])-1):
             rho = rho_2[1][i]
             pnt = general.expect_xyz(rho)
-            b.add_points(pnt)
+            # b.add_points(pnt)
+            b.add_vectors(pnt)
 
         rho = rho_2[1][-1]
         vec = general.expect_xyz(rho)
@@ -248,7 +251,7 @@ def plot_distance1(self, n=0):
 
     # initialize plot
     plt.figure(figsize=(12, 9))
-    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.d['f_sample']]} states")
+    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.d['f_sample']]} {int(np.log2(self.d['dim']))} qubit states")
 
     # calculate mean
     mean = np.mean(self.get_distances(), axis=0, where=self.get_valids())
@@ -315,7 +318,7 @@ def plot_distance2(self, n=0):
     '''
     # initialize plot
     plt.figure(figsize=(12, 9))
-    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.d['f_sample']]} states")
+    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.d['f_sample']]} {int(np.log2(self.d['dim']))} qubit states")
 
     # calculate mean
     mean = np.mean(self.get_distances(), axis=0, where=self.get_valids())
@@ -352,7 +355,7 @@ def compare_distance_osc(self, criteria_1, criteria_2):
     '''
     # initialize plot
     plt.figure(figsize=(12, 9))
-    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.d['f_sample']]} states")
+    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.d['f_sample']]} {int(np.log2(self.d['dim']))} qubit states")
 
     c = [['navy', 'lightblue'], ['forestgreen', 'lightgreen'], ['red', 'lightsalmon'], ['black', 'grey'], ['peru', 'sandybrown'], ['darkorange', 'bisque']]
     for idx, tomo in enumerate(self._list):
@@ -390,7 +393,7 @@ def compare_distance(self, criteria_1, criteria_2):
     '''
     # initialize plot
     plt.figure(figsize=(12, 9))
-    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {w[self.d['f_sample']]} states")
+    plt.title(f"N-scaling of {w[self.d['f_distance']]} averaged over {self.d['N_mean']} {int(np.log2(self.d['dim']))} qubit states")
 
     c = [['navy', 'lightblue'], ['forestgreen', 'lightgreen'], ['red', 'lightsalmon'], ['black', 'grey'], ['peru', 'sandybrown'], ['darkorange', 'bisque']]
     for idx, tomo in enumerate(self._list):
@@ -528,7 +531,7 @@ def plot_validity(self):
     Plots the distribution of invalid states.
     '''
     plt.figure(figsize=(12, 9))
-    plt.title(f"Invalidity distribution of estimates")
+    plt.title(f"Invalidity distribution of {w[self.d['f_sample']]} {int(np.log2(self.d['dim']))} qubit states")
 
     height = np.sum(np.logical_not(self._valids), axis=0)
     plt.imshow(self._valids, cmap=colors.ListedColormap(['red', 'green']), vmin=0, vmax=1, alpha=0.4, aspect='auto')
@@ -543,7 +546,7 @@ def plot_validity(self):
     plt.savefig(self.path+'plots/val_'+self.name+'.png', format='png', dpi=300)
 
 
-def speed_comparison(title, iterations=10, **kwargs):
+def speed_comparison(title, d, iterations=10):
     '''
     Shows the result of speed comparison of arbitrary functions.
 
@@ -553,7 +556,8 @@ def speed_comparison(title, iterations=10, **kwargs):
         d[name] = (func, list of parameters)
     :return:
     '''
-    data = speed.compare(iterations=10, **kwargs)
+    data = speed.compare(d, iterations=iterations)
+    print(data)
     df   = pd.DataFrame.from_dict(data, orient='index')
 
     ax = df.plot.bar(figsize=(10, 6), ylabel='time', title=title , legend=False, rot=0)

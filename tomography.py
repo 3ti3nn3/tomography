@@ -89,7 +89,7 @@ class Tomography:
 
         self._originals = self.d['f_sample'](self.d['dim'], self.d['N_mean'])
 
-    def check_validty(self, prec=1e-14):
+    def check_validity(self, prec=1e-14):
         for i in range(self.d['N_mean']):
             for j in range(self.d['N_ticks']):
                 self._valids[i, j] = check.state(self._estimates[i,j], prec=prec)

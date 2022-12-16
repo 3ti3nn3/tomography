@@ -48,7 +48,7 @@ class OneStepTomography(Tomography):
 
             # initialize other attributes
             self.x_N  = np.logspace(np.log10(self.d['N_min']), np.log10(self.d['N_max']), self.d['N_ticks'], dtype=np.int)
-            self.povm = general.povm[self.d['povm_name']]
+            self.povm = general.povm[self.d['povm_name']](self.d['dim'])
 
             # initialize storage for results
             self._originals = None

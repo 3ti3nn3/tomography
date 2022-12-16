@@ -28,7 +28,7 @@ def measure(func, *args, iterations=10):
     return np.mean(t1-t0)
 
 
-def compare(iterations=10, **kwargs):
+def compare(d, iterations=10,):
     '''
     Compares a arbitraty number of functions.
 
@@ -38,7 +38,7 @@ def compare(iterations=10, **kwargs):
     '''
     t_mean = {}
 
-    for key, value in kwargs.items():
+    for key, value in d.items():
         t           = measure(value[0], *value[1], iterations=iterations)
         t_mean[key] = t
 

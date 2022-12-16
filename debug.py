@@ -182,11 +182,11 @@ def realign():
     MA0 = general.pauli6(2)[0]
     MB0 = general.pauli6(2)[1]
 
-    MA1 = general.realign_povm(general.partial_trace(rho, 0), MA0, mirror=mirror)
-    MB1 = general.realign_povm(general.partial_trace(rho, 1), MB0, mirror=mirror)
+    MA1 = general.transform_eigenbasis(general.partial_trace(rho, 0), MA0, mirror=mirror)
+    MB1 = general.transform_eigenbasis(general.partial_trace(rho, 1), MB0, mirror=mirror)
 
     M0 = general.tensorproduct(MA0, MB0)
-    M1 = general.realign_povm(rho, M0)
+    M1 = general.transform_eigenbasis(rho, M0)
 
     if np.all( M1-general.tensorproduct(MA1, MB1)):
         print(f"realign successful!")
