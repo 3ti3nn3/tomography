@@ -67,11 +67,11 @@ def partial_trace(rho: np.array, idx_qubit):
     n_qubits = int(np.log2(rho.shape[-1]))
     if type(idx_qubit)==int:
         idx_qubit = [n_qubits-1-idx_qubit]
-    elif type(idx_qubit)==list:
+    elif type(idx_qubit)==list or type(idx_qubit.tolist())==list:
         idx_qubit = np.flip(np.sort(n_qubits-1-np.array(idx_qubit)))
     else:
         raise ValueError(f"Unexpected type of idx_qubit: {type(idx_qubit)}. Choose integer, list or array.")
-    assert idx_qubit[0]<n_qubits, 'Index of qubit which should be reduced exceeds the number of qubits.'
+    assert len(idx_qubit)==0 or idx_qubit[0]<n_qubits, 'Index of qubit which should be reduced exceeds the number of qubits.'
 
     t1 = tuple(int(2) for i in range(2*n_qubits))
     t2 = (int(2)**(n_qubits-len(idx_qubit)), int(2)**(n_qubits-len(idx_qubit)))
@@ -107,8 +107,9 @@ def tensorproduct(rhos_1: np.array, rhos_2: np.array):
     '''
     Computes the tensorproduct of two arrays of same lenght: rho_1 otimes rho_2.
 
-    :param rhos_1: Nxdxd array of states
+    :param rhos_1: Mxdxd array of states
     :param rhos_2: Nxdxx array of states
+    :return: Nxd^2xd^2 or Mxd^2xd^2 array of states
     '''
     if len(rhos_1.shape)==2 and len(rhos_2.shape)==2:
         return np.kron(rhos_2, rhos_1)
@@ -130,6 +131,20 @@ def tensorproduct(rhos_1: np.array, rhos_2: np.array):
 
     else:
         raise ValueError(f"Input has unexpected shape: {rhos_1.shape}, {rhos_2.shape}")
+
+
+def tensorproduct_cum(rhos: np.array):
+    '''
+    :param rhos: Nxdxd array of states
+    :return: d^Nxd^N array of state
+    '''
+    N   = rhos.shape[0]
+    rho = rhos[0]
+
+    for i in range(1, N):
+        rho = tensorproduct(rho, rhos[i])
+
+    return rho
 
 
 # rotation matrices
@@ -220,106 +235,6 @@ def infidelity(rho_1: np.array, rho_2: np.array):
         return 1-np.real(np.trace(rho_1@rho_2) + 2*np.sqrt(LA.det(rho_1)*LA.det(rho_2)))
     else:
         return 1-np.real(np.trace(sqrtm(rho_1@rho_2))**2)
-
-# realignment process
-def R_povm(phi: np.float, theta: np.float, mirror=True):
-    '''
-    Determines the rotation matrix for a rotation on the block sphere for the given angles.
-
-    :param phi  : polar angle
-    :param theta: azimutal angle
-    :return: 2x2 array of ration matrix
-    '''
-    if mirror:
-        return Rz(np.array([-phi-np.pi]))@Ry(np.array([np.pi-theta]))
-    else:
-        return Rz(np.array([-phi]))@Ry(np.array([theta]))
-
-
-def extract_param(rho: np.array):
-    '''
-    Determines the angles of rho's orientation and the distance r.
-
-    :param rho: dxd array of density matrix
-    :return: tuple of (r, phi, theta)
-    '''
-    n = expect_xyz(rho)
-
-    r     = np.sqrt(np.sum(n**2))
-    phi   = np.arctan2(n[1], n[0])
-    theta = np.arccos(n[2]/r)
-
-    return r, phi, theta
-
-
-def extract_angles(rho: np.array):
-    '''
-    Determines the angles of rho's orientation.
-
-    :param rho: 2x2 array of density matrix
-    :return: tuple of (phi, theta)
-    '''
-    n = expect_xyz(rho)
-
-    r     = np.sqrt(np.sum(n**2))
-    phi   = np.arctan2(n[1], n[0])
-    theta = np.arccos(n[2]/r)
-
-    return phi, theta
-
-
-def realign_rotation(rho: np.array, M: np.array, mirror=True):
-    '''
-    Rotates the set of POVM in the eigenbasis of rho.
-
-    :param M    : Nxdxd array of set of POVMs
-    :param phi  : polar angle
-    :param theta: angular angle
-    :return: Nxdxd realigned POVMs
-    '''
-    n_qubits = int(np.log2(rho.shape[-1]))
-
-    if n_qubits==1:
-        R = R_povm(*extract_angles(rho), mirror=mirror)
-    elif n_qubits==2:
-        rho_A = partial_trace(rho, 1)
-        rho_B = partial_trace(rho, 0)
-        R = tensorproduct(R_povm(*extract_angles(rho_A), mirror=mirror), R_povm(*extract_angles(rho_B), mirror=mirror))
-    else:
-        raise Error(f"More than 2 qubits not allowad.")
-
-    return R@M@H(R)
-
-
-def realign_eigenbasis(rho: np.array, M: np.array, mirror=True):
-    '''
-    Transforms the POVM in the eigenbasis of rho.
-
-    :param rho   : dxd array of state
-    :param M     : Nxdxd array of set of POVMs
-    :param mirror: placeholder for reasons of generality
-    :return: Nxdxd realigned POVMs
-    '''
-    _, U = LA.eigh(rho)
-    return U@M@H(U)
-
-
-def realign_product_eigenbasis(rho: np.array, M: np.array, mirror=True):
-    '''
-    Transforms the POVM in the eigenbasis of its reduces components.
-
-    :param rho   : dxd array of state
-    :param M     : Nxdxd array of set of POVMs
-    :param mirror: placeholder for reasons of generality
-    :return: Nxdxd realigned POVMs
-    '''
-    pass
-    # n_qubits = int(np.log2(rho.shape[-1]))
-    #
-    # U_arr = np.empty((n_qubits, 2, 2), dtype=np.complex)
-    #
-    # for qubit in range(n_qubits):
-
 
 
 # N0-step representations

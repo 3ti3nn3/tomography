@@ -53,16 +53,16 @@ def gradient(D: np.array, M: np.array):
     pass
 
 
-def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=True, mirror=True, prec=1e-14):
+def two_step(rho: np.array, M0: np.array, N: int, N0: int, f_align, cup=True, prec=1e-14):
     '''
     Estimates with one intermediate step of POVM realignment.
 
-    :param rho   : dxd array of density matrix
-    :param M0    : Nxdxd array of POVM set
-    :param N     : total number of measurements
-    :param N0    : number of measurements in the first step
-    :param cup   : all data or only data after first estimate
-    :param mirror: align or antialign
+    :param rho    : dxd array of density matrix
+    :param M0     : Nxdxd array of POVM set
+    :param N      : total number of measurements
+    :param N0     : number of measurements in the first step
+    :param f_align: function about how to align after firs step
+    :param cup    : all data or only data after first estimate
     :return: dxd array of adaptive mle estimator
     '''
     # initial constants
@@ -76,7 +76,7 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=True, mirror=True
         return rho_0
     else:
         # rallignment according to initial estimate
-        M1 = general.transform_eigenbasis(rho_0, M0, mirror=mirror)
+        M1 = f_align(rho_0, M0)
 
         # true state
         N1 = int(N-N0)

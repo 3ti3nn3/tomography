@@ -53,16 +53,16 @@ def linear(D: np.array, M: np.array):
     return np.einsum('i,ji,jnk->nk', p, T_inv, M)
 
 
-def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=False, mirror=True):
+def two_step(rho: np.array, M0: np.array, N: int, N0: int, f_align, cup=False):
     '''
     Estimates with one intermediate step of POVM realignment.
 
-    :param rho   : dxd array of density matrix
-    :param M0    : Nxdxd array of POVM set
-    :param N     : total number of measurements
-    :param N0    : number of measurements in the first step
-    :param cup   : all data or only data after first estimate
-    :param mirror: align or antialign
+    :param rho    : dxd array of density matrix
+    :param M0     : Nxdxd array of POVM set
+    :param N      : total number of measurements
+    :param N0     : number of measurements in the first step
+    :param f_align: function about how to align after first step
+    :param cup    : all data or only data after first estimate
     :return: dxd array of adaptive linear inversion estimator
     '''
     D0    = simulate.measure(rho, np.minimum(N0, N), M0)
@@ -71,7 +71,7 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, cup=False, mirror=Tru
     if N<=N0:
         return rho_0
     else:
-        M1    = general.transform_eigenbasis(rho_0, M0, mirror=mirror)
+        M1    = f_align(rho_0, M0)
         N1    = int(N-N0)
         D1    = simulate.measure(rho, N1, M1)
         rho_1 = linear(D1, M1)

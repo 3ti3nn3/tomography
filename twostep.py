@@ -35,11 +35,11 @@ class TwoStepTomography1(Tomography):
             self.d['N_mean']     = None
             self.d['povm_name']  = None
             self.d['alpha']      = None
-            self.d['mirror']     = None
             self.d['cup']        = None
             self.d['N0']         = None
             self.d['f_N0']       = None
             self.d['f_sample']   = None
+            self.d['f_align']    = None
             self.d['f_estimate'] = None
             self.d['f_distance'] = None
 
@@ -102,7 +102,7 @@ class TwoStepTomography1(Tomography):
         for j in range(self.d['N_mean']):
             self.logger.info(f"{j} of {self.d['N_mean']} states reconstructed.")
             for i in range(self.d['N_ticks']):
-                self._estimates[j,i] = self.d['f_estimate'](self._originals[j], self.povm, self.x_N[i], self.d['N0'], cup=self.d['cup'], mirror=self.d['mirror'])
+                self._estimates[j,i] = self.d['f_estimate'](self._originals[j], self.povm, self.x_N[i], self.d['N0'], self.d['f_align'], cup=self.d['cup'])
                 self._distances[j,i] = self.d['f_distance'](self._originals[j], self._estimates[j,i])
                 self._valids[j,i]    = check.state(self._estimates[j,i])
         self.logger.info(f"score of valid states: {np.sum(self._valids)/(self.d['N_mean']*self.d['N_ticks'])}")
@@ -207,10 +207,10 @@ class TwoStepTomography2(Tomography):
             self.d['N_mean']     = None
             self.d['povm_name']  = None
             self.d['alpha']      = None
-            self.d['mirror']     = None
             self.d['cup']        = None
             self.d['f_N0']       = None
             self.d['f_sample']   = None
+            self.d['f_align']    = None
             self.d['f_estimate'] = None
             self.d['f_distance'] = None
 
@@ -266,7 +266,7 @@ class TwoStepTomography2(Tomography):
         for j in range(self.d['N_mean']):
             self.logger.info(f"{j} of {self.d['N_mean']} states reconstructed.")
             for i in range(self.d['N_ticks']):
-                self._estimates[j,i] = self.d['f_estimate'](self._originals[j], self.povm, self.x_N[i], self.d['f_N0'](self.x_N[i], self.d['alpha']), cup=self.d['cup'], mirror=self.d['mirror'])
+                self._estimates[j,i] = self.d['f_estimate'](self._originals[j], self.povm, self.x_N[i], self.d['f_N0'](self.x_N[i], self.d['alpha']), self.d['f_align'], cup=self.d['cup'])
                 self._distances[j,i] = self.d['f_distance'](self._originals[j], self._estimates[j,i])
                 self._valids[j,i]    = check.state(self._estimates[j,i])
         self.logger.info(f"score of valid states: {np.sum(self._valids)/(self.d['N_mean']*self.d['N_ticks'])}")
@@ -298,6 +298,7 @@ class TwoStepTomography2(Tomography):
 
     def plot_distance(self, n=0):
         visualization.plot_distance2(self, n=n)
+
 
 
 class TwoStepComparison(Comparison):
@@ -344,14 +345,14 @@ class TwoStepComparison(Comparison):
     def get_alpha(self):
         return [tst.d['alpha'] for tst in self._list]
 
-    def get_mirror(self):
-        return [tst.d['mirror'] for tst in self._list]
-
     def get_cup(self):
         return [tst.d['cup'] for tst in self._list]
 
     def get_sample(self):
         return [tst.d['f_sample'] for tst in self._list]
+
+    def get_align(self):
+        return [tst.d['f_align'] for tst in self._list]
 
 
     def transform_citeria(self, criteria):
@@ -360,9 +361,9 @@ class TwoStepComparison(Comparison):
         data['f_estimate'] = [visualization.w[f_estimate] for f_estimate in self.get_estimation_method()]
         data['povm_name']  = self.get_povm_name()
         data['alpha']      = [fr"$\alpha$ = {alpha}" for alpha in self.get_alpha()]
-        data['mirror']     = ['aligned' if mirror else 'anti-aligned' for mirror in self.get_mirror()]
         data['cup']        = ["$D_0\cup D_1$" if cup else "$D_1$" for cup in self.get_cup()]
         data['f_sample']   = [visualization.w[f_sample] for f_sample in self.get_sample()]
+        data['f_align']    = [visualization.w[f_align] for f_align in self.get_align()]
 
         return data[criteria]
 
@@ -399,10 +400,10 @@ class TwoStepAlpha1(Tomography):
             self.d['alpha_min']   = None
             self.d['alpha_max']   = None
             self.d['alpha_ticks'] = None
-            self.d['mirror']      = None
             self.d['cup']         = None
             self.d['f_N0']        = None
             self.d['f_sample']    = None
+            self.d['f_align']     = None
             self.d['f_estimate']  = None
             self.d['f_distance']  = None
 
@@ -459,7 +460,7 @@ class TwoStepAlpha1(Tomography):
         for idx, alpha in enumerate(self.x_alpha):
             name = self.name+f'_alpha{idx}'
 
-            tst_keys       = ['dim', 'N_min', 'N_max', 'N_ticks', 'N_mean', 'povm_name', 'mirror', 'cup', 'f_N0', 'f_sample', 'f_estimate', 'f_distance']
+            tst_keys       = ['dim', 'N_min', 'N_max', 'N_ticks', 'N_mean', 'povm_name', 'cup', 'f_N0', 'f_sample', 'f_align', 'f_estimate', 'f_distance']
             tst_d          = {key: self.d[key] for key in tst_keys}
             tst_d['alpha'] = alpha
 
@@ -508,10 +509,10 @@ class TwoStepAlpha2(Tomography):
             self.d['alpha_min']   = None
             self.d['alpha_max']   = None
             self.d['alpha_ticks'] = None
-            self.d['mirror']      = None
             self.d['cup']         = None
             self.d['f_N0']        = None
             self.d['f_sample']    = None
+            self.d['f_align']     = None
             self.d['f_estimate']  = None
             self.d['f_distance']  = None
 
@@ -567,7 +568,7 @@ class TwoStepAlpha2(Tomography):
         for idx, alpha in enumerate(self.x_alpha):
             name = self.name+f'_alpha{idx}'
 
-            tst_keys       = ['dim', 'N_min', 'N_max', 'N_ticks', 'N_mean', 'povm_name', 'mirror', 'cup', 'f_N0', 'f_sample', 'f_estimate', 'f_distance']
+            tst_keys       = ['dim', 'N_min', 'N_max', 'N_ticks', 'N_mean', 'povm_name', 'cup', 'f_N0', 'f_sample', 'f_align', 'f_estimate', 'f_distance']
             tst_d          = {key: self.d[key] for key in tst_keys}
             tst_d['alpha'] = alpha
 

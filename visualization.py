@@ -15,6 +15,7 @@ import speed
 import pure
 import mixed
 import check
+import align
 
 # name dictionary for functions
 w = {}
@@ -26,6 +27,10 @@ w[mixed.sample_hilbert]   = 'mixed'
 w[pure.sample_product_unitary]  = 'pure product'
 w[mixed.sample_product_bures]   = 'mixed product'
 w[mixed.sample_product_hilbert] = 'mixed product'
+
+# f_align
+w[align.eigenbasis]         = 'non product U'
+w[align.product_eigenbasis] = 'product U'
 
 # f_estimate
 w[mle.iterative]      = 'MLE'
