@@ -4,8 +4,11 @@ import pure
 import inversion
 import mle
 import general
+import align
+import visualization
 import onestep as os
 import numpy as np
+import numpy.linalg as LA
 
 
 def ost():
@@ -123,6 +126,38 @@ def tensorproduct():
         print(f"componentwise difference: {AB1-AB2}")
 
 
+def tensorproduct_cum():
+
+    # first test
+    print('first test tensorproduct_cum')
+    A = B = np.arange(16).reshape(4, 4)
+
+    C = general.tensorproduct_cum(np.array([A, B]))
+    D = general.tensorproduct(A, B)
+
+    if np.all(C==D):
+        print(f"tensorproduct successful!")
+    else:
+        print(f"tensorproduct not successful!")
+        print(f"absolute difference: {np.sum(np.abs(C-D))}")
+        print(f"componentwise difference: {C-D}")
+
+
+    # second test
+    print('second test tensorproduct_cum')
+    a = b = c = np.arange(16).reshape(4, 4)
+
+    A = general.tensorproduct_cum(np.array([a, b, c]))
+    B = general.tensorproduct(general.tensorproduct(a, b), c)
+
+    if np.all(A==B):
+        print(f"tensorproduct successful!")
+    else:
+        print(f"tensorproduct not successful!")
+        print(f"absolute difference: {np.sum(np.abs(A-B))}")
+        print(f"componentwise difference: {A-B}")
+
+
 def partial_trace():
 
     A = np.arange(16).reshape(4, 4)
@@ -174,19 +209,19 @@ def partial_trace():
         print(f"partial trace:\n {ABC0}")
 
 
-def realign():
+def eigenbasis():
 
-    mirror = False
-    rho = pure.sample_product_unitary(4, 1)
+    dim = 4
+    rho = pure.sample_product_unitary(dim, 1)
 
     MA0 = general.pauli6(2)[0]
     MB0 = general.pauli6(2)[1]
 
-    MA1 = general.transform_eigenbasis(general.partial_trace(rho, 0), MA0, mirror=mirror)
-    MB1 = general.transform_eigenbasis(general.partial_trace(rho, 1), MB0, mirror=mirror)
+    MA1 = align.eigenbasis(general.partial_trace(rho, 0), MA0)
+    MB1 = align.eigenbasis(general.partial_trace(rho, 1), MB0)
 
     M0 = general.tensorproduct(MA0, MB0)
-    M1 = general.transform_eigenbasis(rho, M0)
+    M1 = align.eigenbasis(rho, M0)
 
     if np.all( M1-general.tensorproduct(MA1, MB1)):
         print(f"realign successful!")
@@ -194,5 +229,41 @@ def realign():
         print(f"realign not successful!")
 
 
+def product_eigenbasis():
+
+    print(f"first test product_eigenbasis")
+    dim = 2
+    rho = mixed.sample_hilbert(dim, 1)
+    M0  = general.pauli6(dim)
+
+    MA1 = align.product_eigenbasis(rho, M0)
+    MB1 = align.eigenbasis(rho, M0)
+    if np.all(MA1==MB1):
+        print(f"realign successful")
+    else:
+        print(f"realign not successful")
+
+    print(f"second test product_eigenbasis")
+    dim = 4
+    rho = mixed.sample_hilbert(dim, 1)
+
+    M0  = general.pauli6(dim)
+
+    _, U0 = LA.eigh(general.partial_trace(rho, 1))
+    _, U1 = LA.eigh(general.partial_trace(rho, 0))
+    U     = np.kron(U1, U0)
+
+    MA1 = align.product_eigenbasis(rho, M0)
+    MB1 = U@M0@general.H(U)
+    if np.all(MA1==MB1):
+        print(f"realign successful")
+    else:
+        print(f"realign not successful")
+        print(f"absolute difference: {np.sum(np.abs(MA1-MB1))}")
+        print(f"MA1:\n {MA1[6]}")
+        print(f"MB1:\n {MB1[6]}")
+
+
+
 if __name__ == '__main__':
-    realign()
+    product_eigenbasis()
