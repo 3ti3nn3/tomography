@@ -292,6 +292,8 @@ class TwoStepTomography2(Tomography):
         except Exception as e:
             self.logger.info("Extracting parameters of overall scaling wasn't successful")
             self.logger.debug('The following error occurred in calculate_fitparam: '+str(e))
+            popt     = [None, None]
+            popt_err = [None, None]
 
         return f, popt, popt_err
 

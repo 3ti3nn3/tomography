@@ -14,6 +14,7 @@ import inversion
 import speed
 import pure
 import mixed
+import state
 import check
 import align
 
@@ -27,6 +28,12 @@ w[mixed.sample_hilbert]   = 'mixed'
 w[pure.sample_product_unitary]  = 'pure product'
 w[mixed.sample_product_bures]   = 'mixed product'
 w[mixed.sample_product_hilbert] = 'mixed product'
+
+# states
+w[state.bell1] = 'Bell-1'
+w[state.bell2] = 'Bell-2'
+w[state.bell3] = 'Bell-3'
+w[state.bell4] = 'Bell-4'
 
 # f_align
 w[align.eigenbasis]         = 'non product U'
