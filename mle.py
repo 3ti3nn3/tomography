@@ -1,4 +1,5 @@
 import numpy as np
+import cvxpy as cp
 import const
 import pickle
 import general
@@ -16,7 +17,7 @@ def iterative(D: np.array, M: np.array):
     :return: dxd array of iterative MLE estimator
     '''
     dim = M.shape[-1]
-    M_D = M[D]
+    n   = general.count(D, np.zeros(len(M), dtype=np.int))
 
     iter_max = 500
     dist     = float(1)
@@ -26,8 +27,8 @@ def iterative(D: np.array, M: np.array):
 
     j = 0
     while j<iter_max and dist>1e-14:
-        p      = np.einsum('ik,nki->n', rho_1, M_D)
-        R      = np.einsum('n,nij->ij', 1/p, M_D)
+        p      = np.einsum('ik,nki->n', rho_1, M)
+        R      = np.einsum('n,n,nij->ij', n, 1/p, M)
         update = R@rho_1@R
         rho_1  = update/np.trace(update)
 
@@ -50,7 +51,26 @@ def gradient(D: np.array, M: np.array):
     :param iter: number of iterations
     :return: dxd array of iterative MLE estimator
     '''
-    pass
+    N = len(D)
+    dim = M.shape[-1]
+
+    # build likelihood
+    n = general.count(D, np.zeros(N, dtype=np.int))
+    M_D = M[D]
+
+    # initialise gradient descent
+    rho = cp.Variable((dim, dim), hermitian=True)
+    constraints = [rho>>0, cp.real(cp.trace(rho))==1]
+
+    # loglike = cp.sum( [cp.prod([n[i], cp.log(cp.real(cp.trace(cp.matmul(M[i], rho))))]) for i in range(N)] )
+    # loglike = cp.real(cp.trace(rho))
+    loglike = cp.sum( [cp.log(cp.real(cp.trace(cp.matmul(M_D[i], rho)))) for i in range(6)] )
+    prob    = cp.Problem(cp.Maximize(loglike), constraints)
+
+    # solve
+    prob.solve()
+    return rho.value
+
 
 
 def two_step(rho: np.array, M0: np.array, N: int, N0: int, f_align, cup=True, prec=1e-14):
@@ -81,31 +101,9 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, f_align, cup=True, pr
         # true state
         N1 = int(N-N0)
         D1 = simulate.measure(rho, N1, M1)
-
-        # final guess using previous data
-        M_D0 = M0[D0]
-        M_D1 = M1[D1]
         if cup:
-            M_D = np.concatenate([M_D0, M_D1], axis=0)
+            D = np.concatenate([D0, D1], axis=0)
         else:
-            M_D  = M_D1
+            D  = D1
 
-        iter_max = 500
-        dist     = float(1)
-        rho_10   = np.eye(dim)/dim
-        rho_11   = np.eye(dim)/dim
-
-        j = 0
-        while j<iter_max and dist>1e-14:
-            p      = np.einsum('ik,nki->n', rho_11, M_D)
-            R      = np.einsum('n,nij->ij', 1/p, M_D)
-            update = R@rho_11@R
-            rho_11  = update/np.trace(update)
-
-            if j>=40 and j%20==0:
-                dist  = general.infidelity(rho_10, rho_11)
-            rho_10 = rho_11
-
-            j += 1
-
-        return rho_11
+        return iterative(D, M1)

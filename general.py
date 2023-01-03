@@ -56,6 +56,38 @@ def expect_xyz(rho: np.array):
         return np.real([expect(const.sx, rho), expect(const.sy, rho), expect(const.sz, rho)])
 
 
+def count(D: np.array, n: np.array):
+    '''
+    Iterative counter for linear inversion. Also able to process single measurement
+    as well as batches of measurement as long as they are provided as an array.
+
+    :param D: data measurement
+        dataype: D[i] = [index of POVM]
+    :param n: N array of counted POVMs
+    :result: updated n
+    '''
+    for i in range(len(n)):
+        n[i] += np.sum(D==i)
+
+    return n
+
+
+def count_unique(D: np.array, n: np.array):
+    '''
+    Iterative counter for linear inversion. Also able to process single measurement
+    as well as batches of measurement as long as they are provided as an array.
+
+    :param D: N array of data measurement
+        dataype: D[i] = [index of POVM]
+    :param n: N array of counted POVMs
+    :result: updated n
+    '''
+    unique, count = np.unique(D, return_counts=True)
+    n[unique] += count
+
+    return n
+
+
 def partial_trace(rho: np.array, idx_qubit):
     '''
     Computes the partial trace of the idx_qubit qubit.
