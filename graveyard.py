@@ -589,6 +589,41 @@ def transform_eigenbasis(M: np.array, phi: np.float, theta: np.float, mirror=Tru
         return R@M@H(R)
 
 
+def iterative(D: np.array, M: np.array):
+    '''
+    Estimates state according to iterative MLE.
+
+    :param D   : N array of measured data
+        datatype: D[i] = [index of POVM]
+    :param M   : Nxdxd array of POVM set
+    :param iter: number of iterations
+    :return: dxd array of iterative MLE estimator
+    '''
+    dim = M.shape[-1]
+    M_D = M[D]
+
+    iter_max = 500
+    dist     = float(1)
+
+    rho_1 = np.eye(dim)/dim
+    rho_2 = np.eye(dim)/dim
+
+    j = 0
+    while j<iter_max and dist>1e-14:
+        p      = np.einsum('ik,nki->n', rho_1, M_D)
+        R      = np.einsum('n,nij->ij', 1/p, M_D)
+        update = R@rho_1@R
+        rho_1  = update/np.trace(update)
+
+        if j>=40 and j%20==0:
+            dist  = general.infidelity(rho_1, rho_2)
+        rho_2 = rho_1
+
+        j += 1
+
+    return rho_1
+
+
 # tst.update_param('dim', 2)
 # tst.update_param('N_min', int(1e01))
 # tst.update_param('N_max', int(1e05))

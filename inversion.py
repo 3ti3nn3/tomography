@@ -3,38 +3,6 @@ import simulate
 import general
 
 
-def count_unique(D: np.array, n: np.array):
-    '''
-    Iterative counter for linear inversion. Also able to process single measurement
-    as well as batches of measurement as long as they are provided as an array.
-
-    :param D: N array of data measurement
-        dataype: D[i] = [index of POVM]
-    :param n: N array of counted POVMs
-    :result: updated n
-    '''
-    unique, count = np.unique(D, return_counts=True)
-    n[unique] += count
-
-    return n
-
-
-def count(D: np.array, n: np.array):
-    '''
-    Iterative counter for linear inversion. Also able to process single measurement
-    as well as batches of measurement as long as they are provided as an array.
-
-    :param D: data measurement
-        dataype: D[i] = [index of POVM]
-    :param n: N array of counted POVMs
-    :result: updated n
-    '''
-    for i in range(len(n)):
-        n[i] += np.sum(D==i)
-
-    return n
-
-
 def linear(D: np.array, M: np.array):
     '''
     Estimates according to linear inversion.
@@ -45,7 +13,7 @@ def linear(D: np.array, M: np.array):
     :return: dxd array of linear inversion estimator
     '''
     N     = len(D)
-    n     = count(D, np.zeros(len(M), dtype=int))
+    n     = general.count(D, np.zeros(len(M), dtype=int))
     p     = n/N
     T     = np.einsum('alk,bkl->ab', M, M)
     T_inv = np.linalg.inv(T)

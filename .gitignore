@@ -28,3 +28,5 @@ plots/
 data/
 results/
 archive/
+presentation/
+simulations.py
