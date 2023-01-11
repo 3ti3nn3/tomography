@@ -213,6 +213,39 @@ def Rz(phi):
                          [np.zeros(len(phi), dtype=np.complex), np.exp(-1j*phi/2, dtype=np.complex)]], axes=[2, 0, 1])
 
 
+def R(n: np.array, alpha: float):
+    '''
+    Calculates rotation matrix about given unit vector n.
+
+    :param n    : 1x3 array of unit vector
+    :param theta: angle
+    :return 2x2 array of rotation matrix
+    '''
+    return np.cos(alpha/2)*np.eye(2) - 1j*np.sin(alpha/2)* np.sum(n[:, None, None]*const.sa, axis=0)
+
+
+def n(phi: float, theta: float):
+    '''
+    Returns unit vector on the sphere.
+
+    :param phi  : polar angle
+    :param theta: azimuth angle
+    :return: 1x3 array of unit vector
+    '''
+    return np.array([np.cos(phi)*np.sin(theta), np.sin(phi)*np.sin(theta), np.cos(theta)])
+
+
+def R_product(phi_1: float, theta_1: float, alpha_1: float, phi_2: float, theta_2: float, alpha_2: float):
+    '''
+    Returns rotation matrix.
+
+    :param angles_1: angles for first rotation matrix
+    :param angles_2: angles for second rotation matrix
+    :return: 4x4 array of product rotation matrix
+    '''
+    return tensorproduct(R(n(phi_1, theta_1), alpha_1), R(n(phi_2, theta_2), alpha_2))
+
+
 # distance measures
 def euclidean_dist(rho_1: np.array, rho_2: np.array):
     '''
