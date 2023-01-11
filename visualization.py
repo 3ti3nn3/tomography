@@ -74,14 +74,14 @@ def qubit(points=np.array([None]), vectors=np.array([None]), states=np.array([No
             b.add_points(general.expect_xyz(points).T)
         except Exception as e:
             b.add_points(general.expect_xyz(points))
-            print(f"The follwoing exceptino occurred in qubit: {e}")
+            print(f"The follwoing exception occurred in qubit: {e}")
         b.render()
     if np.all(vectors!= None):
         try:
             b.add_vectors(general.expect_xyz(vectors))
         except Exception as e:
             b.add_vectors(general.expect_xyz(vectors))
-            print(f"The follwoing exceptino occurred in qubit: {e}")
+            print(f"The follwoing exception occurred in qubit: {e}")
         b.render()
     if np.all(states != None):
         b.add_states(states, kind=kind)

@@ -7,7 +7,9 @@ import general
 import align
 import visualization
 import onestep as os
+import qutip as qt
 import numpy as np
+import matplotlib.pyplot as plt
 import numpy.linalg as LA
 
 
@@ -264,6 +266,37 @@ def product_eigenbasis():
         print(f"MB1:\n {MB1[6]}")
 
 
+def align():
+
+    print(f"testing unit vector")
+    phi   = np.array([0, 0, 0, 0, 0])*np.pi
+    theta = np.array([1/2, 1/2, 1/2, 1/2, 1/2])*np.pi
+    n     = np.empty((5, 3))
+
+    b              = qt.Bloch()
+    b.point_marker = 'o'
+    b.point_color  = ['blue']
+    b.vector_color = ['red']
+    b.vector_width = 1
+    b.point_size   = [10]
+
+    for i in range(5):
+        n[i] = general.n(phi[i], theta[i])
+        b.add_points(n[i])
+
+    b.render()
+    plt.show()
+
+    print(f"testing rotation")
+    rho = np.zeros((2, 2))
+    rho[0,0] = 1
+    theta = np.array([0, 1/2])*np.pi
+
+    for i in range(len(theta)):
+        R = general.R(general.n(0, 1/2*np.pi), theta[i])
+        print(R)
+        visualization.qubit(vectors=R@rho@general.H(R))
+
 
 if __name__ == '__main__':
-    product_eigenbasis()
+    align()
