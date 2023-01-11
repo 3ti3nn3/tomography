@@ -72,6 +72,31 @@ def gradient(D: np.array, M: np.array):
     return rho.value
 
 
+def gradient_scipy(D: np.array, M: np.array):
+    '''
+    Estimates state according to iterative MLE using gradient descent.
+
+    :param D   : N array of measured data
+        datatype: D[i] = [index of POVM]
+    :param M   : Nxdxd array of POVM set
+    :param iter: number of iterations
+    :return: dxd array of iterative MLE estimator
+    '''
+    N = len(D)
+    dim = M.shape[-1]
+
+    # build likelihood
+    n = general.count(D, np.zeros(N, dtype=np.int))
+    M_D = M[D]
+
+    L = lambda rho: np.prod([np.trace(rho.reshape(dim, dim)@M[i])**n[i] for i in range(len(M))])
+
+    rho_0 = np.eye(dim)/dim
+    cons = {'type': 'eq', 'fun': lambda rho: np.trace(rho.reshape(dim, dim)) - 1,
+            'type': 'eq', 'fun': lambda rho: np.sum(np.abs( rho.reshape(dim, dim) - general.H(rho.reshape(dim, dim)) ))}
+
+    minimize(L, rho_0, method='SLQP', constraints=cons)
+
 
 def two_step(rho: np.array, M0: np.array, N: int, N0: int, f_align, cup=True, prec=1e-14):
     '''
@@ -102,8 +127,10 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, f_align, cup=True, pr
         N1 = int(N-N0)
         D1 = simulate.measure(rho, N1, M1)
         if cup:
-            D = np.concatenate([D0, D1], axis=0)
+            D = np.concatenate([D0, D1+len(M1)], axis=0)
+            M = np.concatenate([M0, M1], axis=0)
         else:
-            D  = D1
+            D = D1
+            M = M1
 
         return iterative(D, M1)
