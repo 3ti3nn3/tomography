@@ -3,7 +3,9 @@ import mixed
 import pure
 import inversion
 import mle
+import check
 import general
+import state
 import align
 import visualization
 import onestep as os
@@ -11,7 +13,6 @@ import qutip as qt
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy.linalg as LA
-
 
 def ost():
     name  = 'test_ost'
@@ -298,5 +299,228 @@ def align():
         visualization.qubit(vectors=R@rho@general.H(R))
 
 
+def schmidt_decomp():
+
+    print(f"testing schmidt_decomp")
+    dim = 4
+    prec = 1e-10
+
+
+    # test state
+    print(f"testing unentangled pure state")
+    rho = np.zeros((dim, dim), dtype=complex)
+    rho[0, 0] = 1
+
+    p, U, S, V, m = general.schmidt_decomp(rho)
+
+    r = len(p)
+    n = int(np.sqrt(dim))
+
+    assert p.shape==(r, ), f"Unexpected shape of p: {p}"
+    assert U.shape==(r, n, n), f"Unexpected shape of U: {U}."
+    assert S.shape==(r, n, ), f"Unexpected shape of S: {S}"
+    assert V.shape==(r, n, n), f"Unexpected shape of V: {V}."
+    print(f"m = {m}")
+
+    assert np.sum(p)-1<prec, f"p {p} does not add up to 1: {np.sum(p)}"
+    assert np.abs(np.sum( np.sum(np.transpose(U, axes=[0, 2, 1])@np.conjugate(U), axis=0) - r*np.eye(2)))<prec, f"U not unitary."
+    assert np.all(S>=-prec), f"Schmidt coefficients should be non-negative. Instead: {S}"
+    assert np.all(np.abs(np.sum(S*S, axis=1)-1)<prec), f"Square of the Schmidt coefficient should sum up to 1. Instead: {np.sum(S*S, axis=1)}"
+    assert np.abs(np.sum( np.sum(np.transpose(V, axes=[0, 2, 1])@np.conjugate(V), axis=0) - r*np.eye(2)))<prec, f"V not unitary."
+
+    rho_rec = np.zeros((dim, dim), dtype=complex)
+    for i in range(r):
+        psi = np.zeros(dim, dtype=complex)
+        for j in range(m[i]):
+            u, v = U[i,j], V[i,j]
+            psi += S[i,j] * (u[:,None]@v[None,:]).flatten()
+
+        rho_rec += p[i]* psi[:,None]@np.conjugate(psi[None,:])
+
+    assert check.state(rho), f"rho is not a valid physical state!"
+
+    if np.sum(np.abs(rho_rec-rho))< prec:
+        print(f"testing unentangled pure state successful!")
+    else:
+        print(f"p = {p}")
+        print(f"U = {U}")
+        print(f"S = {S}")
+        print(f"V = {V}")
+        print(f"m = {m}")
+        print(f"absolute norm = {np.sum(np.abs(rho_rec-rho))}")
+
+
+    # unentangled pure states
+    print(f"testing unentangled pure state")
+    rho = pure.sample_product_unitary(dim, 1)
+
+    p, U, S, V, m = general.schmidt_decomp(rho)
+
+    r = len(p)
+    n = int(np.sqrt(dim))
+
+    assert p.shape==(r, ), f"Unexpected shape of p: {p}"
+    assert U.shape==(r, n, n), f"Unexpected shape of U: {U}."
+    assert S.shape==(r, n, ), f"Unexpected shape of S: {S}"
+    assert V.shape==(r, n, n), f"Unexpected shape of V: {V}."
+    print(f"m = {m}")
+
+    assert np.sum(p)-1<prec, f"p {p} does not add up to 1: {np.sum(p)}"
+    assert np.abs(np.sum( np.sum(np.transpose(U, axes=[0, 2, 1])@np.conjugate(U), axis=0) - r*np.eye(2)))<prec, f"U not unitary."
+    assert np.all(S>=-prec), f"Schmidt coefficients should be non-negative. Instead: {S}"
+    assert np.all(np.abs(np.sum(S*S, axis=1)-1)<prec), f"Square of the Schmidt coefficient should sum up to 1. Instead: {np.sum(S*S, axis=1)}"
+    assert np.abs(np.sum( np.sum(np.transpose(V, axes=[0, 2, 1])@np.conjugate(V), axis=0) - r*np.eye(2)))<prec, f"V not unitary."
+
+    rho_rec = np.zeros((dim, dim), dtype=complex)
+    for i in range(r):
+        psi = np.zeros(dim, dtype=complex)
+        for j in range(m[i]):
+            u, v = U[i,j], V[i,j]
+            psi += S[i,j] * (u[:,None]@v[None,:]).flatten()
+
+        rho_rec += p[i]* psi[:,None]@np.conjugate(psi[None,:])
+
+    assert check.state(rho), f"rho is not a valid physical state!"
+
+    if np.sum(np.abs(rho_rec-rho))< prec:
+        print(f"testing unentangled pure state successful!")
+    else:
+        print(f"p = {p}")
+        print(f"U = {U}")
+        print(f"S = {S}")
+        print(f"V = {V}")
+        print(f"m = {m}")
+        print(f"absolute norm = {np.sum(np.abs(rho_rec-rho))}")
+
+
+    # unentangled mixed states
+    print(f"testing unentangled mixed state")
+    rho = mixed.sample_product_hilbert(dim, 1)
+
+    p, U, S, V, m = general.schmidt_decomp(rho)
+
+    r = len(p)
+    n = int(np.sqrt(dim))
+
+    assert p.shape==(r, ), f"Unexpected shape of p: {p}"
+    assert U.shape==(r, n, n), f"Unexpected shape of U: {U}."
+    assert S.shape==(r, n, ), f"Unexpected shape of S: {S}"
+    assert V.shape==(r, n, n), f"Unexpected shape of V: {V}."
+    print(f"m = {m}")
+
+    assert np.sum(p)-1<prec, f"p {p} does not add up to 1: {np.sum(p)}"
+    assert np.abs(np.sum( np.sum(np.transpose(U, axes=[0, 2, 1])@np.conjugate(U), axis=0) - r*np.eye(2)))<prec, f"U not unitary."
+    assert np.all(S>=-prec), f"Schmidt coefficients should be non-negative. Instead: {S}"
+    assert np.all(np.abs(np.sum(S*S, axis=1)-1)<prec), f"Square of the Schmidt coefficient should sum up to 1. Instead: {np.sum(S*S, axis=1)}"
+    assert np.abs(np.sum( np.sum(np.transpose(V, axes=[0, 2, 1])@np.conjugate(V), axis=0) - r*np.eye(2)))<prec, f"V not unitary."
+
+    rho_rec = np.zeros((dim, dim), dtype=complex)
+    for i in range(r):
+        psi = np.zeros(dim, dtype=complex)
+        for j in range(m[i]):
+            u, v = U[i,j], V[i,j]
+            psi += S[i,j] * (u[:,None]@v[None,:]).flatten()
+
+        rho_rec += p[i]* psi[:,None]@np.conjugate(psi[None,:])
+
+    assert check.state(rho), f"rho is not a valid physical state!"
+
+    if np.sum(np.abs(rho_rec-rho))< prec:
+        print(f"testing unentangled mixed state successful!")
+    else:
+        print(f"p = {p}")
+        print(f"U = {U}")
+        print(f"S = {S}")
+        print(f"V = {V}")
+        print(f"m = {m}")
+        print(f"absolute norm = {np.sum(np.abs(rho_rec-rho))}")
+
+
+    # entangled pure states
+    print(f"testing entangled pure state")
+    rho = pure.sample_unitary(dim, 1)
+
+    p, U, S, V, m = general.schmidt_decomp(rho)
+
+    r = len(p)
+    n = int(np.sqrt(dim))
+
+    assert p.shape==(r, ), f"Unexpected shape of p: {p}"
+    assert U.shape==(r, n, n), f"Unexpected shape of U: {U}."
+    assert S.shape==(r, n, ), f"Unexpected shape of S: {S}"
+    assert V.shape==(r, n, n), f"Unexpected shape of V: {V}."
+    print(f"m = {m}")
+
+    assert np.sum(p)-1<prec, f"p {p} does not add up to 1: {np.sum(p)}"
+    assert np.abs(np.sum( np.sum(np.transpose(U, axes=[0, 2, 1])@np.conjugate(U), axis=0) - r*np.eye(2)))<prec, f"U not unitary."
+    assert np.all(S>=-prec), f"Schmidt coefficients should be non-negative. Instead: {S}"
+    assert np.all(np.abs(np.sum(S*S, axis=1)-1)<prec), f"Square of the Schmidt coefficient should sum up to 1. Instead: {np.sum(S*S, axis=1)}"
+    assert np.abs(np.sum( np.sum(np.transpose(V, axes=[0, 2, 1])@np.conjugate(V), axis=0) - r*np.eye(2)))<prec, f"V not unitary."
+
+    rho_rec = np.zeros((dim, dim), dtype=complex)
+    for i in range(r):
+        psi = np.zeros(dim, dtype=complex)
+        for j in range(m[i]):
+            u, v = U[i,j], V[i,j]
+            psi += S[i,j] * (u[:,None]@v[None,:]).flatten()
+
+        rho_rec += p[i]* psi[:,None]@np.conjugate(psi[None,:])
+
+    assert check.state(rho), f"rho is not a valid physical state!"
+
+    if np.sum(np.abs(rho_rec-rho))< prec:
+        print(f"testing entangled pure state successful!")
+    else:
+        print(f"p = {p}")
+        print(f"U = {U}")
+        print(f"S = {S}")
+        print(f"V = {V}")
+        print(f"m = {m}")
+        print(f"absolute norm = {np.sum(np.abs(rho_rec-rho))}")
+
+
+    # entangled mixed states
+    print(f"testing entangled mixed state")
+    rho = mixed.sample_hilbert(dim, 1)
+
+    p, U, S, V, m = general.schmidt_decomp(rho)
+
+    r = len(p)
+    n = int(np.sqrt(dim))
+
+    assert p.shape==(r, ), f"Unexpected shape of p: {p}"
+    assert U.shape==(r, n, n), f"Unexpected shape of U: {U}."
+    assert S.shape==(r, n, ), f"Unexpected shape of S: {S}"
+    assert V.shape==(r, n, n), f"Unexpected shape of V: {V}."
+    print(f"m = {m}")
+
+    assert np.sum(p)-1<prec, f"p {p} does not add up to 1: {np.sum(p)}"
+    assert np.abs(np.sum( np.sum(np.transpose(U, axes=[0, 2, 1])@np.conjugate(U), axis=0) - r*np.eye(2)))<prec, f"U not unitary."
+    assert np.all(S>=-prec), f"Schmidt coefficients should be non-negative. Instead: {S}"
+    assert np.all(np.abs(np.sum(S*S, axis=1)-1)<prec), f"Square of the Schmidt coefficient should sum up to 1. Instead: {np.sum(S*S, axis=1)}"
+    assert np.abs(np.sum( np.sum(np.transpose(V, axes=[0, 2, 1])@np.conjugate(V), axis=0) - r*np.eye(2)))<prec, f"V not unitary."
+
+    rho_rec = np.zeros((dim, dim), dtype=complex)
+    for i in range(r):
+        psi = np.zeros(dim, dtype=complex)
+        for j in range(m[i]):
+            u, v = U[i,j], V[i,j]
+            psi += S[i,j] * (u[:,None]@v[None,:]).flatten()
+
+        rho_rec += p[i]* psi[:,None]@np.conjugate(psi[None,:])
+
+    assert check.state(rho), f"rho is not a valid physical state!"
+
+    if np.sum(np.abs(rho_rec-rho))< prec:
+        print(f"testing entangled mixed state successful!")
+    else:
+        print(f"p = {p}")
+        print(f"U = {U}")
+        print(f"S = {S}")
+        print(f"V = {V}")
+        print(f"m = {m}")
+        print(f"absolute norm = {np.sum(np.abs(rho_rec-rho))}")
+
+
 if __name__ == '__main__':
-    align()
+    schmidt_decomp()
