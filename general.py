@@ -179,6 +179,30 @@ def tensorproduct_cum(rhos: np.array):
     return rho
 
 
+def schmidt_decomp(rho: np.array):
+    '''
+    :param rho: dxd array of density matrix
+    :return: p, U, S, V
+        :param p: m array of
+        :param U: mxsqrt(d) array of orthonormal vectors (rows) for H1
+        :param S: m array of Schmidt coefficients
+        :param V: mxsqrt(d) array of orthonormal vectors (rows) for H2
+        :param m: int of Schmidt rank
+    '''
+    prec = 1e-14
+    dim  = rho.shape[-1]
+
+    v, W = LA.eigh(rho)
+
+    N = np.sum(v>prec, dtype=np.int)
+    p = v[v>prec]
+
+    Psi      = ((W.T)[v>prec]).reshape(N, int(np.sqrt(dim)), int(np.sqrt(dim)))
+    U, S, VH = LA.svd(Psi)
+
+    return p, np.transpose(U, axes=[0, 2, 1]), S, VH, np.sum(S>=prec, axis=1, dtype=int)
+
+
 # rotation matrices
 def Rx(alpha):
     '''
@@ -244,6 +268,22 @@ def R_product(phi_1: float, theta_1: float, alpha_1: float, phi_2: float, theta_
     :return: 4x4 array of product rotation matrix
     '''
     return tensorproduct(R(n(phi_1, theta_1), alpha_1), R(n(phi_2, theta_2), alpha_2))
+
+
+# entropy
+def entropy(p: np.array):
+    '''
+    Calculates the entropy of a given probability distribution.
+
+    :param p: N array of probability distribution
+    :return: float of entropy
+    '''
+    assert np.all(0<=p) and np.all(p<=1), f"Probability distribution does not fullfilll the properties of such a distrubution."
+
+    # consider only non zero probabilities because of the convention: 0*log(0) = 0
+    p = p[p!=0]
+
+    return - np.sum(np.log2(p))
 
 
 # distance measures
