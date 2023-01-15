@@ -51,6 +51,7 @@ w[general.hilbert_dist]    = 'Hilbert Schmidt distance'
 w[general.infidelity]      = 'infidelity'
 
 
+# qubit visualizations
 def qubit(points=np.array([None]), vectors=np.array([None]), states=np.array([None]), kind='point', angles=[-60, 30]):
     '''
     Depending on the parameters the function creates vectors or points on the Bloch sphere.
@@ -140,6 +141,7 @@ def qubit_3(rho_0: (str, np.array), rho_1=(None, np.array([None])), rho_2=(None,
     plt.show()
 
 
+# distributions
 def expectation_distribution(rho, n_bins=10):
     '''
     Visualizes the Pauli expectation values.
@@ -253,6 +255,32 @@ def purity_distribution(rhos: dict):
     plt.show()
 
 
+def measurement_distribution(rho: np.array, M: np.array, N: int):
+    '''
+    Visualizes the distribution of the measurement outcomes.
+
+    :param rho: dxd array of state
+    :param M  : Nxdxd array of set of povms
+    :param N  : number of measurements
+    :return: N array of
+    '''
+    D = simulate.measure(rho, N, M)
+    n = general.count(D, np.zeros(len(M), dtype=np.int))
+
+    plt.figure(figsize=(15, 9))
+    plt.title('Measurement outcoume distributions')
+
+    plt.bar(np.arange(len(M)), n/N, color='navy')
+
+    plt.xlabel('index of povm')
+    plt.ylabel(r'$P$')
+
+    plt.show()
+
+    return n
+
+
+# differnt scaling plots/ results plots
 def plot_distance1(self, n=0):
     '''
     Plots the N-dependency of the distance measure for the given simulation.
