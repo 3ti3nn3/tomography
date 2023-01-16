@@ -95,6 +95,19 @@ def eigenbasis(rho: np.array, M: np.array):
     return U@M@general.H(U)
 
 
+def eigenbasis_mirror(rho: np.array, M: np.array):
+    '''
+    Transforms the POVM in the eigenbasis of rho.
+
+    :param rho: dxd array of states
+    :param M  : Nxdxd array of set of POVMs
+    :return: Nxdxd realigned POVMs
+    '''
+    _, U = LA.eigh(rho)
+    U = np.flip(U, axis=1)
+    return U@M@general.H(U)
+
+
 def product_eigenbasis(rho: np.array, M: np.array):
     '''
     Transforms the POVM in the eigenbasis of its reduces components.
