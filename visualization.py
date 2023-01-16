@@ -34,9 +34,12 @@ w[state.bell1] = 'Bell-1'
 w[state.bell2] = 'Bell-2'
 w[state.bell3] = 'Bell-3'
 w[state.bell4] = 'Bell-4'
+w[state.maxmixed] = 'max mixed state'
+w[state.purity]   = 'mixed state'
 
 # f_align
 w[align.eigenbasis]         = 'non product U'
+w[align.eigenbasis_mirror]  = 'mirrored non product U'
 w[align.product_eigenbasis] = 'product U'
 
 # f_estimate
