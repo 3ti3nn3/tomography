@@ -133,4 +133,4 @@ def two_step(rho: np.array, M0: np.array, N: int, N0: int, f_align, cup=True, pr
             D = D1
             M = M1
 
-        return iterative(D, M1)
+        return iterative(D, M)
